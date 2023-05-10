@@ -11,7 +11,7 @@ using Unity.Mathematics;
 using static Unity.Mathematics.math;
 using System.Runtime.ConstrainedExecution;
 
-using number = System.Single;
+using number = System.Double;
 
 [System.Serializable]
 public struct NnLayer : IDisposable
@@ -58,16 +58,6 @@ public struct NnLayer : IDisposable
             nodeLength,
             Allocator.Persistent,
             NativeArrayOptions.UninitializedMemory);
-    }
-
-    public void InitWeightToRandom()
-    {
-        var rnd = new Unity.Mathematics.Random((uint)Time.frameCount);
-
-        for (var i = 0; i < this.weights.length; i++)
-        {
-            this.weights.weights[i] = rnd.NextFloat();
-        }
     }
 
     public void Dispose()
@@ -169,3 +159,52 @@ public static class NnLayerExtension
     }
 }
 
+static public class WeightExtension
+{
+    static public unsafe void InitRandom(this NnWeights<number> ws)
+    {
+        var rnd = new Unity.Mathematics.Random((uint)ws.weights.GetUnsafePtr());
+
+        for (var i = 0; i < ws.length; i++)
+        {
+            ws.weights[i] = rnd.NextFloat(0, 1);
+        }
+    }
+
+    static public unsafe void InitXivier(this NnWeights<number> ws) =>
+        ws.initX1X2(1.0 / sqrt(ws.widthOfNodes));
+
+    static public unsafe void InitHe(this NnWeights<number> ws) =>
+        ws.initX1X2(sqrt(2.0 / ws.widthOfNodes));
+
+    static unsafe void initX1X2(this NnWeights<number> ws, number std_deviation)
+    {
+        if (!ws.weights.IsCreated) return;
+
+        var rnd = new Unity.Mathematics.Random((uint)ws.weights.GetUnsafePtr());
+        var pi2 = 2.0 * math.PI_DBL;
+
+        (number x1, number x2) calc_x1x2() => (
+            x1: sqrt(-2.0 * log(rnd.NextDouble())) * std_deviation,
+            x2: pi2 * rnd.NextDouble());
+
+        for (var io = 0; io < ws.length >> 1; io++)
+        {
+            var (x1, x2) = calc_x1x2();
+            
+            ws.weights[io * 2 + 0] = x1 * cos(x2);
+            if (isnan(ws.weights[io * 2 + 0])) Debug.Log($"{io * 2 + 0} {ws.weights[io * 2 + 0]}");
+
+            ws.weights[io * 2 + 1] = x1 * sin(x2);
+            if (isnan(ws.weights[io * 2 + 1])) Debug.Log($"{io * 2 + 1} {ws.weights[io * 2 + 1]}");
+        }
+
+        if ((ws.length & 1) > 0)
+        {
+            var (x1, x2) = calc_x1x2();
+
+            ws.weights[ws.length - 1] = x1 * sin(x2);
+            if (isnan(ws.weights[ws.length - 1])) Debug.Log($"{ws.length - 1} {ws.weights[ws.length - 1]}");
+        }
+    }
+}

@@ -43,6 +43,9 @@ public struct NnWeights<T> : IDisposable
     public NativeArray<T> weights;
     public int width;
 
+    public int widthOfNodes => this.width - 1;
+    public int widthWithBias => this.width;
+
     public int length => this.weights.Length;
 
     public T this[int ix, int iy]

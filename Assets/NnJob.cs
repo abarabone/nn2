@@ -12,7 +12,7 @@ using static Unity.Mathematics.math;
 using System.Runtime.ConstrainedExecution;
 using System.Numerics;
 
-using number = System.Single;
+using number = System.Double;
 
 
 public struct NnLayerJob<TAct> : IJobParallelFor
@@ -30,14 +30,13 @@ public struct NnLayerJob<TAct> : IJobParallelFor
 
     public void Execute(int curr_index)
     {
-        //var iw_start = this.prev_activations.lengthWithBias * curr_index;
-
-        var sum = 0.0f;
+        var sum = default(number);
 
         var ic = curr_index;
         for (var ip = 0; ip < this.prev_activations.lengthWithBias; ip++)
         {
             sum += this.prev_activations[ip] * this.pxc_weithgs[ip, ic];
+            //Debug.Log($"fwd p{ip} x c{ic} -> w:{this.pxc_weithgs[ip, ic]} * a-:{this.prev_activations[ip]}");
         }
 
         this.curr_activations[curr_index] = new TAct().Activate(sum);
@@ -53,9 +52,8 @@ public struct NnLayerJob<TAct> : IJobParallelFor
 //w1 -= d1 * a0
 
 
-
-//d = (t - a)
-//w -= d * a -
+// d  = -2(t - a) * a'
+// w -= d * a-
 public struct NnLayerBackLastJob<TAct> : IJobParallelFor
     where TAct : struct, IActivationFunction
 {
@@ -80,23 +78,27 @@ public struct NnLayerBackLastJob<TAct> : IJobParallelFor
 
     public void Execute(int curr_index)
     {
-        var d = this.curr_activations[curr_index] - this.curr_trains[curr_index];
-        d = d * new TAct().Prime(this.curr_activations[curr_index]);
+        var t = this.curr_trains[curr_index];
+        var a = this.curr_activations[curr_index];
+
+        var d = -2 * (t - a);
+        //Debug.Log($"back last d sum c{curr_index} x n{0} -> t:{t} a:{a} dl:{d}");
+        d = d * new TAct().Prime(a);
 
 
         var ic = curr_index;
-        //var iw_start = this.prev_activations.Length * curr_index;
         for (var ip = 0; ip < this.prev_activations.lengthWithBias; ip++)
         {
             this.pxc_weithgs[ip, ic] -= this.leaning_rate * d * this.prev_activations[ip];
+            //Debug.Log($"back last sub weight p{ip} x c{ic} -> w:{this.pxc_weithgs[ip, ic]} a-:{this.prev_activations[ip]}");
         }
 
         this.curr_ds[curr_index] = d;
     }
 }
 
-//d  = sum(d+ * w+) * a'
-//w -= d * a-
+// d  = sum(d+ * w+) * a'
+// w -= d * a-
 public struct NnLayerBackJob<TAct> : IJobParallelFor
     where TAct : struct, IActivationFunction
 {
@@ -123,23 +125,21 @@ public struct NnLayerBackJob<TAct> : IJobParallelFor
 
     public void Execute(int curr_index)
     {
-        //var wcurr = this.curr_activations.Length;
-        //var iw = curr_index;//this.curr_activations.Length; 
-
         var ic = curr_index;
 
-        var sumd = 0.0f;
+        var sumd = default(number);
         for (var inext = 0; inext < this.next_ds.Length; inext++)
         {
             sumd += this.next_ds[inext] * this.cxn_weithgs[ic, inext];
+            //Debug.Log($"back d sum c{ic} x n{inext} -> w:{this.cxn_weithgs[ic, inext]} * d+:{this.next_ds[inext]}");
         }
         var d = sumd * new TAct().Prime(this.curr_activations[curr_index]);
 
 
-        //var iw_start = this.prev_activations.Length * curr_index;
         for (var ip = 0; ip < this.prev_activations.lengthWithBias; ip++)
         {
             this.pxc_weithgs[ip, ic] -= this.leaning_rate * d * this.prev_activations[ip];
+            //Debug.Log($"back sub weight p{ip} x c{ic} -> w:{this.pxc_weithgs[ip, ic]} a-:{this.prev_activations[ip]}");
         }
 
         this.curr_ds[curr_index] = d;

@@ -11,6 +11,7 @@ using Unity.Mathematics;
 using static Unity.Mathematics.math;
 using System.Runtime.ConstrainedExecution;
 
+using number = System.Double;
 
 [System.Serializable]
 public struct NnLayers : IDisposable
@@ -30,7 +31,7 @@ public struct NnLayers : IDisposable
 
         foreach (var l in this.layers)
         {
-            l.InitWeightToRandom();
+            l.weights.InitHe();
         }
     }
 
@@ -87,6 +88,27 @@ public struct NnLayers : IDisposable
             (prev, curr).Execute<Sigmoid>();
         }
     }
+    public void ExecuteBack(NativeArray<number> corrects, float learingRate)
+    {
+        {
+            var prev = this.layers[this.layers.Length - 2];
+            var curr = this.layers[this.layers.Length - 1];
+
+            (prev, curr).ExecuteBackLast<Sigmoid>(corrects, learingRate);
+            //Debug.Log($"back last {this.layers.Length - 1}");
+        }
+
+        for (var i = layers.Length - 1; i-- > 1;)
+        {
+            var prev = this.layers[i - 1];
+            var curr = this.layers[i];
+            var next = this.layers[i + 1];
+
+            (prev, curr, next).ExecuteBack<ReLU>(learingRate);
+            //Debug.Log($"back {i}");
+        }
+    }
+
     public void ExecuteForward2()
     {
         var dep = default(JobHandle);
@@ -106,26 +128,7 @@ public struct NnLayers : IDisposable
 
         dep.Complete();
     }
-
-    public void ExecuteBack(NativeArray<float> corrects, float learingRate)
-    {
-        {
-            var prev = this.layers[this.layers.Length - 2];
-            var curr = this.layers[this.layers.Length - 1];
-
-            (prev, curr).ExecuteBackLast<Sigmoid>(corrects, learingRate);
-        }
-
-        for (var i = layers.Length - 1; i-- > 1;)
-        {
-            var prev = this.layers[i - 1];
-            var curr = this.layers[i];
-            var next = this.layers[i + 1];
-
-            (prev, curr, next).ExecuteBack<ReLU>(learingRate);
-        }
-    }
-    public void ExecuteBack2(NativeArray<float> corrects, float learingRate)
+    public void ExecuteBack2(NativeArray<number> corrects, float learingRate)
     {
         var dep = default(JobHandle);
 
@@ -152,16 +155,27 @@ public struct NnLayers : IDisposable
 
 public interface IActivationFunction
 {
-    float Activate(float u);
-    float Prime(float a);
+    number Activate(number u);
+    number Prime(number a);
 }
 public struct ReLU : IActivationFunction
 {
-    public float Activate(float u) => max(u, 0.0f);
-    public float Prime(float a) => sign(a);
+    public number Activate(number u) => max(u, 0.0);
+    public number Prime(number a) => sign(a);
 }
 public struct Sigmoid : IActivationFunction
 {
-    public float Activate(float u) => 1.0f / (1.0f + math.pow(math.E, -u));
-    public float Prime(float a) => a * (1.0f - a);
+    //public number Activate(number u) => 1.0 / (1.0 + exp(-u));
+    public number Activate(number u)
+    {
+        var x = (1.0 + exp(-u));
+        if (x == 0) return 0;
+        return 1.0 / x;
+    }
+    public number Prime(number a) => a * (1.0 - a);
+}
+public struct Affine : IActivationFunction
+{
+    public number Activate(number u) => u;
+    public number Prime(number a) => 1;
 }

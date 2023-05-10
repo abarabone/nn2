@@ -333,16 +333,19 @@ MonoBehaviour:
   m_PrefabInstance: {fileID: 0}
   m_PrefabAsset: {fileID: 0}
   m_GameObject: {fileID: 983497983}
-  m_Enabled: 1
+  m_Enabled: 0
   m_EditorHideFlags: 0
   m_Script: {fileID: 11500000, guid: 78e7ee5ae24e40443bf7de9483653ef8, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
-  layers:
+  nn:
     layers: []
   epoc: 0
   nodeList: 0500000005000000050000000500000005000000
-  learingRate: 0.03
+  learingRate: 0.01
+  show_layers:
+  - acts: []
+    weights: []
 --- !u!4 &983497985
 Transform:
   m_ObjectHideFlags: 0

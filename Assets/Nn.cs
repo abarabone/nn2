@@ -10,22 +10,25 @@ using Unity.Collections.LowLevel.Unsafe;
 using Unity.Mathematics;
 using static Unity.Mathematics.math;
 using System.Runtime.ConstrainedExecution;
+using Unity.VisualScripting;
+
+using number = System.Double;
 
 public class Nn : MonoBehaviour
 {
 
-    public NnLayers layers;
+    public NnLayers nn;
     public int epoc;
 
     public int[] nodeList;
     public float learingRate;
 
-    public ShowLayer show_layers;
+    public ShowLayer[] show_layers;
 
     // Start is called before the first frame update
     void Start()
     {
-        this.layers = new NnLayers(this.nodeList);
+        this.nn = new NnLayers(this.nodeList);
 
         //new testjob
         //{
@@ -39,33 +42,31 @@ public class Nn : MonoBehaviour
     // Update is called once per frame
     unsafe void Update()
     {
-        var ia = this.layers.layers.First().activations.activations;
-        var oa = this.layers.layers.Last().activations.activations;
+        var ia = this.nn.layers.First().activations;
+        var oa = this.nn.layers.Last().activations;
 
-        UnsafeUtility.MemClear(ia.GetUnsafePtr(), ia.Length * sizeof(float));
-        var i = Unity.Mathematics.Random.CreateFromIndex((uint)Time.frameCount).NextInt(0, ia.Length - 1);
+        UnsafeUtility.MemClear(ia.activations.GetUnsafePtr(), ia.lengthOfNodes * sizeof(number));
+        var i = Unity.Mathematics.Random.CreateFromIndex((uint)Time.frameCount).NextInt(0, ia.lengthOfNodes);
         ia[i] = 1;
 
-        this.layers.ExecuteForward();
-        this.layers.ExecuteBack(ia, this.learingRate);
+        this.nn.ExecuteForward();
+        this.nn.ExecuteBack(ia.activations, this.learingRate);
 
         this.epoc++;
     }
 
-    private void OnDisable()
+    unsafe void OnDisable()
     {
-        this.layers.ExecuteForward();
+        var ia = this.nn.layers.First().activations;
+        var oa = this.nn.layers.Last().activations;
+        logger($"i: ", ia.activations);
+        logger($"o: ", oa.activations);
 
-        var ia = this.layers.layers.First().activations.activations;
-        var oa = this.layers.layers.Last().activations.activations;
-        logger($"i: ", ia);
-        logger($"o: ", oa);
-
-
+        this.show_layers = this.nn.layers.toShow();
     }
     private void OnDestroy()
     {
-        this.layers.Dispose();
+        this.nn.Dispose();
     }
 
     void logger<T>(string desc, NativeArray<T> arr) where T:struct
@@ -102,13 +103,57 @@ public struct NodeUnit
 [Serializable]
 public class ShowLayer
 {
-    [SerializeField]
-    public float[] acts;
-    [SerializeField]
+    //[SerializeField]
+    public number[] acts;
+
+    //[SerializeField]
     public we[] weights;
 
+    [Serializable]
     public class we
     {
-        public float[] weights;
+        //[SerializeField]
+        public number[] weights;
+    }
+}
+
+static public class ShowExtension
+{
+    static public ShowLayer[] toShow(this NnLayer[] layers)
+    {
+        var qa =
+            from l in layers
+            select l.activations.activations
+            ;
+        var qw =
+            from l in layers
+            select
+                from w in l.weights.weights.Chunks(l.weights.widthWithBias)
+                select w
+            ;
+
+        return qa.Zip(qw, (x, y) => new ShowLayer
+        {
+            acts = x
+                .ToArray(),
+            weights = y
+                .Select(ws => new ShowLayer.we
+                {
+                    weights = ws.ToArray(),
+                })
+                .ToArray()
+        })
+        .ToArray();
+    }
+
+    // 指定サイズのチャンクに分割する拡張メソッド
+    public static IEnumerable<IEnumerable<T>> Chunks<T>
+    (this IEnumerable<T> list, int size)
+    {
+        while (list.Any())
+        {
+            yield return list.Take(size);
+            list = list.Skip(size);
+        }
     }
 }
