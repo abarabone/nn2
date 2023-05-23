@@ -25,23 +25,28 @@ public class Nn : MonoBehaviour
 
     public ShowLayer[] show_layers;
 
+
+    NnOtherAndLast<ReLU, Sigmoid> exe = new();
+    //NnUinform<Sigmoid> exe = new();
+
     // Start is called before the first frame update
     void Start()
     {
         this.nn = new NnLayers(this.nodeList);
 
-        //new testjob
-        //{
-        //    srcs = this.layers.layers[1].weights,
-        //    dsts = this.layers.layers[2].weights,
-        //}
-        //.Schedule(10, 1)
-        //.Complete();
+        this.exe.InitWeights(this.nn.layers);
     }
+
+
+
+    JobHandle deps = default;
 
     // Update is called once per frame
     unsafe void Update()
     {
+        //this.deps.Complete();
+        this.deps = default;
+
         var ia = this.nn.layers.First().activations;
         var oa = this.nn.layers.Last().activations;
 
@@ -49,20 +54,27 @@ public class Nn : MonoBehaviour
         var i = Unity.Mathematics.Random.CreateFromIndex((uint)Time.frameCount).NextInt(0, ia.lengthOfNodes);
         ia[i] = 1;
 
-        this.nn.ExecuteForward();
-        this.nn.ExecuteBack(ia.activations, this.learingRate);
+        this.deps = this.exe.ExecuteForwardWithJob(this.nn.layers, this.deps);
+        this.deps = this.exe.ExecuteBackwordWithJob(this.nn.layers, ia.activations, this.learingRate, this.deps);
+        JobHandle.ScheduleBatchedJobs();
+        //this.exe.ExecuteForward(this.nn.layers);
+        //this.exe.ExecuteBackword(this.nn.layers, ia.activations, this.learingRate);
 
+        this.deps.Complete();
+        this.nn.switchWeightBuffers();
         this.epoc++;
     }
 
     unsafe void OnDisable()
     {
+        this.deps.Complete();
+
         var ia = this.nn.layers.First().activations;
         var oa = this.nn.layers.Last().activations;
         logger($"i: ", ia.activations);
         logger($"o: ", oa.activations);
 
-        this.show_layers = this.nn.layers.toShow();
+        //this.show_layers = this.nn.layers.toShow();
     }
     private void OnDestroy()
     {

@@ -11,6 +11,8 @@ using Unity.Mathematics;
 using static Unity.Mathematics.math;
 using System.Runtime.ConstrainedExecution;
 
+using number = System.Double;
+
 
 [System.Serializable]
 public struct NnActivations<T> : IDisposable
@@ -61,3 +63,38 @@ public struct NnWeights<T> : IDisposable
         this.weights.Dispose();
     }
 }
+
+
+
+public interface IActivationFunction
+{
+    number Activate(number u);
+    number Prime(number a);
+    void InitWeights(NnWeights<number> weights);
+}
+
+public struct ReLU : IActivationFunction
+{
+    public number Activate(number u) => max(u, 0.0);
+    public number Prime(number a) => sign(a);
+    public void InitWeights(NnWeights<number> weights) => weights.InitHe();
+}
+public struct Sigmoid : IActivationFunction
+{
+    public number Activate(number u) => 1.0 / (1.0 + exp(-u));
+    //public number Activate(number u)
+    //{
+    //    var x = (1.0 + exp(-u));
+    //    if (x == 0) return 0;
+    //    return 1.0 / x;
+    //}
+    public number Prime(number a) => a * (1.0 - a);
+    public void InitWeights(NnWeights<number> weights) => weights.InitXivier();
+}
+public struct Affine : IActivationFunction
+{
+    public number Activate(number u) => u;
+    public number Prime(number a) => 1;
+    public void InitWeights(NnWeights<number> weights) => weights.InitRandom();
+}
+

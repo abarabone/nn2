@@ -20,6 +20,7 @@ public struct NnLayer : IDisposable
     public NnWeights<number> weights;
 
     public NativeArray<number> deltas;//
+    public NnWeights<number> weights_next_frame;
 
 
     public NnLayer(int nodeLength, int prevLayerNodeLength = 0)
@@ -45,7 +46,7 @@ public struct NnLayer : IDisposable
                 {
                     weights = new NativeArray<number>(
                         weightLength,
-                        Allocator.Persistent,
+                        Allocator.TempJob,
                         NativeArrayOptions.UninitializedMemory),
 
                     width = weightWidth,
@@ -58,12 +59,15 @@ public struct NnLayer : IDisposable
             nodeLength,
             Allocator.Persistent,
             NativeArrayOptions.UninitializedMemory);
+
+        this.weights_next_frame = default;
     }
 
     public void Dispose()
     {
         this.activations.Dispose();
         this.weights.Dispose();
+        this.weights_next_frame.Dispose();
         if (this.deltas.IsCreated) this.deltas.Dispose();
     }
 }
@@ -71,51 +75,61 @@ public struct NnLayer : IDisposable
 
 public static class NnLayerExtension
 {
+    //static public void InitWeights<TAct>(this NnLayer layer)
+    //    where TAct : struct, IActivationFunction
+    //{
+    //    var f = new TAct();
+    //    foreach (var w in layer.weights.weights)
+    //    {
+    //        f.InitWeights(w);
+    //    }
+    //}
 
-    static public void Execute<Tact>(this (NnLayer prev, NnLayer curr) layers)
-        where Tact : struct, IActivationFunction
-    {
-        new NnLayerJob<Tact>
-        {
-            prev_activations = layers.prev.activations,
-            curr_activations = layers.curr.activations,
-            pxc_weithgs = layers.curr.weights,
-        }
-        .Run(layers.curr.activations.lengthOfNodes);
-    }
-    static public void ExecuteBackLast<Tact>(
-        this (NnLayer prev, NnLayer curr) layers, NativeArray<number> corrects, float learingRate)
-        where Tact : struct, IActivationFunction
-    {
-        new NnLayerBackLastJob<Tact>
-        {
-            curr_activations = layers.curr.activations,
-            curr_ds = layers.curr.deltas,
-            curr_trains = corrects,
-            prev_activations = layers.prev.activations,
-            pxc_weithgs = layers.curr.weights,
-            leaning_rate = learingRate,
-        }
-        .Run(layers.curr.activations.lengthOfNodes);
-    }
-    static public void ExecuteBack<Tact>(
-        this (NnLayer prev, NnLayer curr, NnLayer next) layers, float learingRate)
-        where Tact : struct, IActivationFunction
-    {
-        new NnLayerBackJob<Tact>
-        {
-            curr_activations = layers.curr.activations,
-            curr_ds = layers.curr.deltas,
-            prev_activations = layers.prev.activations,
-            pxc_weithgs = layers.curr.weights,
-            cxn_weithgs = layers.next.weights,
-            next_ds = layers.next.deltas,
-            leaning_rate = learingRate,
-        }
-        .Run(layers.curr.activations.lengthOfNodes);
-    }
+    ////static public void Execute<Tact>(this (NnLayer prev, NnLayer curr) layers)
+    ////    where Tact : struct, IActivationFunction
+    ////{
+    ////    new NnLayerJob<Tact>
+    ////    {
+    ////        prev_activations = layers.prev.activations,
+    ////        curr_activations = layers.curr.activations,
+    ////        pxc_weithgs = layers.curr.weights,
+    ////    }
+    ////    .Run(layers.curr.activations.lengthOfNodes);
+    ////}
+    ////static public void ExecuteBackLast<Tact>(
+    ////    this (NnLayer prev, NnLayer curr) layers, NativeArray<number> dst_pxc_weights,
+    ////    NativeArray<number> corrects, float learingRate)
+    ////    where Tact : struct, IActivationFunction
+    ////{
+    ////    new NnLayerBackLastJob<Tact>
+    ////    {
+    ////        curr_activations = layers.curr.activations,
+    ////        curr_ds = layers.curr.deltas,
+    ////        curr_trains = corrects,
+    ////        prev_activations = layers.prev.activations,
+    ////        pxc_weithgs = layers.curr.weights,
+    ////        leaning_rate = learingRate,
+    ////    }
+    ////    .Run(layers.curr.activations.lengthOfNodes);
+    ////}
+    ////static public void ExecuteBack<Tact>(
+    ////    this (NnLayer prev, NnLayer curr, NnLayer next) layers, float learingRate)
+    ////    where Tact : struct, IActivationFunction
+    ////{
+    ////    new NnLayerBackJob<Tact>
+    ////    {
+    ////        curr_activations = layers.curr.activations,
+    ////        curr_ds = layers.curr.deltas,
+    ////        prev_activations = layers.prev.activations,
+    ////        pxc_weithgs = layers.curr.weights,
+    ////        cxn_weithgs = layers.next.weights,
+    ////        next_ds = layers.next.deltas,
+    ////        leaning_rate = learingRate,
+    ////    }
+    ////    .Run(layers.curr.activations.lengthOfNodes);
+    ////}
 
-    static public JobHandle Execute2<Tact>(this (NnLayer prev, NnLayer curr) layers, JobHandle dep)
+    static public JobHandle ExecuteWithJob<Tact>(this (NnLayer prev, NnLayer curr) layers, JobHandle dep)
         where Tact : struct, IActivationFunction
     {
         return new NnLayerJob<Tact>
@@ -126,7 +140,7 @@ public static class NnLayerExtension
         }
         .Schedule(layers.curr.activations.lengthOfNodes, 1, dep);
     }
-    static public JobHandle ExecuteBackLast2<Tact>(
+    static public JobHandle ExecuteBackLastWithJob<Tact>(
         this (NnLayer prev, NnLayer curr) layers, NativeArray<number> corrects, float learingRate, JobHandle dep)
         where Tact : struct, IActivationFunction
     {
@@ -136,12 +150,13 @@ public static class NnLayerExtension
             curr_ds = layers.curr.deltas,
             curr_trains = corrects,
             prev_activations = layers.prev.activations,
+            dst_pxc_weithgs = layers.curr.weights_next_frame,
             pxc_weithgs = layers.curr.weights,
             leaning_rate = learingRate,
         }
         .Schedule(layers.curr.activations.lengthOfNodes, 1, dep);
     }
-    static public JobHandle ExecuteBack2<Tact>(
+    static public JobHandle ExecuteBackWithJob<Tact>(
         this (NnLayer prev, NnLayer curr, NnLayer next) layers, float learingRate, JobHandle dep)
         where Tact : struct, IActivationFunction
     {
@@ -150,6 +165,7 @@ public static class NnLayerExtension
             curr_activations = layers.curr.activations,
             curr_ds = layers.curr.deltas,
             prev_activations = layers.prev.activations,
+            dst_pxc_weithgs = layers.curr.weights_next_frame,
             pxc_weithgs = layers.curr.weights,
             cxn_weithgs = layers.next.weights,
             next_ds = layers.next.deltas,
@@ -192,19 +208,25 @@ static public class WeightExtension
         {
             var (x1, x2) = calc_x1x2();
             
+            var v0 =
             ws.weights[io * 2 + 0] = x1 * cos(x2);
-            if (isnan(ws.weights[io * 2 + 0])) Debug.Log($"{io * 2 + 0} {ws.weights[io * 2 + 0]}");
+            if (isnan(v0)) Debug.Log($"{io * 2 + 0} {v0}");
+            if (v0 == 0) Debug.Log($"{io * 2 + 0} {v0}");
 
+            var v1 =
             ws.weights[io * 2 + 1] = x1 * sin(x2);
-            if (isnan(ws.weights[io * 2 + 1])) Debug.Log($"{io * 2 + 1} {ws.weights[io * 2 + 1]}");
+            if (isnan(v1)) Debug.Log($"{io * 2 + 1} {v1}");
+            if (v1 == 0) Debug.Log($"{io * 2 + 1} {v1}");
         }
 
         if ((ws.length & 1) > 0)
         {
             var (x1, x2) = calc_x1x2();
 
+            var v0 =
             ws.weights[ws.length - 1] = x1 * sin(x2);
-            if (isnan(ws.weights[ws.length - 1])) Debug.Log($"{ws.length - 1} {ws.weights[ws.length - 1]}");
+            if (isnan(v0)) Debug.Log($"{ws.length - 1} {v0}");
+            if (v0 == 0) Debug.Log($"{ws.length - 1} {v0}");
         }
     }
 }

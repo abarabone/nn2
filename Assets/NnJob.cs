@@ -15,6 +15,18 @@ using System.Numerics;
 using number = System.Double;
 
 
+static class Nna
+{
+    static NnLayerJob<ReLU> job1 = new ();
+    static NnLayerJob<Sigmoid> job2 = new ();
+
+    static NnLayerBackLastJob<ReLU> job5 = new();
+    static NnLayerBackLastJob<Sigmoid> job6 = new();
+    static NnLayerBackJob<ReLU> job3 = new();
+    static NnLayerBackJob<Sigmoid> job4 = new();
+}
+
+[BurstCompile]
 public struct NnLayerJob<TAct> : IJobParallelFor
     where TAct : struct, IActivationFunction
 {
@@ -54,14 +66,15 @@ public struct NnLayerJob<TAct> : IJobParallelFor
 
 // d  = -2(t - a) * a'
 // w -= d * a-
+[BurstCompile]
 public struct NnLayerBackLastJob<TAct> : IJobParallelFor
     where TAct : struct, IActivationFunction
 {
     // outputs
     [WriteOnly]
     public NativeArray<number> curr_ds;
-    [NativeDisableParallelForRestriction]
-    public NnWeights<number> pxc_weithgs;
+    [WriteOnly][NativeDisableParallelForRestriction]
+    public NnWeights<number> dst_pxc_weithgs;
 
     // for d calc
     [ReadOnly]
@@ -70,6 +83,8 @@ public struct NnLayerBackLastJob<TAct> : IJobParallelFor
     public NnActivations<number> curr_activations;
 
     // for w calc
+    [ReadOnly]//[DeallocateOnJobCompletion]
+    public NnWeights<number> pxc_weithgs;
     [ReadOnly]
     public NnActivations<number> prev_activations;
 
@@ -89,7 +104,7 @@ public struct NnLayerBackLastJob<TAct> : IJobParallelFor
         var ic = curr_index;
         for (var ip = 0; ip < this.prev_activations.lengthWithBias; ip++)
         {
-            this.pxc_weithgs[ip, ic] -= this.leaning_rate * d * this.prev_activations[ip];
+            this.dst_pxc_weithgs[ip, ic] = this.pxc_weithgs[ip, ic] - this.leaning_rate * d * this.prev_activations[ip];
             //Debug.Log($"back last sub weight p{ip} x c{ic} -> w:{this.pxc_weithgs[ip, ic]} a-:{this.prev_activations[ip]}");
         }
 
@@ -99,14 +114,16 @@ public struct NnLayerBackLastJob<TAct> : IJobParallelFor
 
 // d  = sum(d+ * w+) * a'
 // w -= d * a-
+[BurstCompile]
 public struct NnLayerBackJob<TAct> : IJobParallelFor
     where TAct : struct, IActivationFunction
 {
     // outputs
     [WriteOnly]
     public NativeArray<number> curr_ds;
-    [NativeDisableParallelForRestriction]
-    public NnWeights<number> pxc_weithgs;
+    [WriteOnly][NativeDisableParallelForRestriction]
+    public NnWeights<number> dst_pxc_weithgs;
+
 
     // for d calc
     [ReadOnly]
@@ -117,6 +134,8 @@ public struct NnLayerBackJob<TAct> : IJobParallelFor
     public NnActivations<number> curr_activations;
 
     // for w calc
+    [ReadOnly]//[DeallocateOnJobCompletion]
+    public NnWeights<number> pxc_weithgs;
     [ReadOnly]
     public NnActivations<number> prev_activations;
 
@@ -127,7 +146,7 @@ public struct NnLayerBackJob<TAct> : IJobParallelFor
     {
         var ic = curr_index;
 
-        var sumd = default(number);
+        var sumd = 0.0;//default(number);
         for (var inext = 0; inext < this.next_ds.Length; inext++)
         {
             sumd += this.next_ds[inext] * this.cxn_weithgs[ic, inext];
@@ -138,7 +157,7 @@ public struct NnLayerBackJob<TAct> : IJobParallelFor
 
         for (var ip = 0; ip < this.prev_activations.lengthWithBias; ip++)
         {
-            this.pxc_weithgs[ip, ic] -= this.leaning_rate * d * this.prev_activations[ip];
+            this.dst_pxc_weithgs[ip, ic] = this.pxc_weithgs[ip, ic] - this.leaning_rate * d * this.prev_activations[ip];
             //Debug.Log($"back sub weight p{ip} x c{ic} -> w:{this.pxc_weithgs[ip, ic]} a-:{this.prev_activations[ip]}");
         }
 

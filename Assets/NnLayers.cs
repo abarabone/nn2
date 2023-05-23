@@ -12,14 +12,13 @@ using static Unity.Mathematics.math;
 using System.Runtime.ConstrainedExecution;
 
 using number = System.Double;
+using static UnityEditor.Experimental.GraphView.GraphView;
 
 [System.Serializable]
 public struct NnLayers : IDisposable
 {
     public NnLayer[] layers;
 
-    //public NnLayers(params int[] nodeLengthList) : this(nodeLengthList)
-    //{ }
     public NnLayers(int[] nodeLengthList)
     {
         this.layers = nodeLengthList
@@ -28,11 +27,6 @@ public struct NnLayers : IDisposable
             .Zip(nodeLengthList, (pre, cur) => new NnLayer(cur, pre))
             .ToArray()
             ;
-
-        foreach (var l in this.layers)
-        {
-            l.weights.InitHe();
-        }
     }
 
     public void Dispose()
@@ -43,139 +37,191 @@ public struct NnLayers : IDisposable
         }
     }
 
-    //public void ExecuteForward3()
-    //{
-    //    for (var i = 1; i < this.layers.Length; i++)
-    //    {
-    //        var prev = this.layers[i - 1];
-    //        var curr = this.layers[i];
-
-    //        curr.Execute<ReLU>(prev);
-    //    }
-    //}
-    //public void ExecuteBack3(NativeArray<float> corrects)
-    //{
-    //    {
-    //        var prev = this.layers[this.layers.Length - 2];
-    //        var curr = this.layers[this.layers.Length - 1];
-
-    //        curr.ExecuteBackLast<ReLU>(prev, corrects);
-    //    }
-
-    //    for (var i = layers.Length - 1; i-- > 1;)
-    //    {
-    //        var prev = this.layers[i - 1];
-    //        var curr = this.layers[i];
-    //        var next = this.layers[i + 1];
-
-    //        curr.ExecuteBack<ReLU>(prev, next);
-    //    }
-    //}
-
-    public void ExecuteForward()
+    public void switchWeightBuffers()
     {
-        for (var i = 1; i < this.layers.Length - 1; i++)
+        for (var i = 0; i < this.layers.Length; i++)
         {
-            var prev = this.layers[i - 1];
-            var curr = this.layers[i];
-
-            (prev, curr).Execute<ReLU>();
-        }
-        {
-            var prev = this.layers[this.layers.Length - 2];
-            var curr = this.layers[this.layers.Length - 1];
-
-            (prev, curr).Execute<Sigmoid>();
+            ref var l = ref this.layers[i];
+            l.weights.Dispose();//
+            l.weights = l.weights_next_frame;
+            l.weights_next_frame = default;
         }
     }
-    public void ExecuteBack(NativeArray<number> corrects, float learingRate)
+}
+
+
+
+
+public interface INnExecutor
+{
+    void InitWeights(NnLayer[] layers);
+
+    //void ExecuteForward(NnLayer[] layers);
+    //void ExecuteBackword(NnLayer[] layers, NativeArray<number> corrects, float learingRate);
+
+    JobHandle ExecuteForwardWithJob(NnLayer[] layers, JobHandle deps = default);
+    JobHandle ExecuteBackwordWithJob(NnLayer[] layers, NativeArray<number> corrects, float learingRate, JobHandle deps = default);
+}
+
+public struct NnOtherAndLast<TOther, TLast> : INnExecutor
+    where TOther:struct, IActivationFunction
+    where TLast:struct, IActivationFunction
+{
+    public void InitWeights(NnLayer[] layers)
+    {
+        var actOther = new TOther();
+        var actLast = new TLast();
+
+        foreach (var l in layers.Skip(1).SkipLast(1))
+        {
+            actOther.InitWeights(l.weights);
+        }
+        {
+            actLast.InitWeights(layers.Last().weights);
+        }
+    }
+
+    ////public void ExecuteForward(NnLayer[] layers)
+    ////{
+    ////    for (var i = 1; i < layers.Length - 1; i++)
+    ////    {
+    ////        var prev = layers[i - 1];
+    ////        var curr = layers[i];
+
+    ////        (prev, curr).Execute<TOther>();
+    ////        //Debug.Log($"fwd {i}");
+    ////    }
+    ////    {
+    ////        var prev = layers[layers.Length - 2];
+    ////        var curr = layers[layers.Length - 1];
+
+    ////        (prev, curr).Execute<TLast>();
+    ////        //Debug.Log($"fwd last {this.layers.Length - 1}");
+    ////    }
+    ////}
+    ////public void ExecuteBackword(NnLayer[] layers, NativeArray<number> corrects, float learingRate)
+    ////{
+    ////    {
+    ////        var prev = layers[layers.Length - 2];
+    ////        var curr = layers[layers.Length - 1];
+
+    ////        var new_pxc_weights = new NnWeights<number>
+    ////        {
+    ////            weights = new NativeArray<number>(
+    ////                prev.weights.length, Allocator.TempJob, NativeArrayOptions.UninitializedMemory)
+    ////        };
+
+    ////        (prev, curr).ExecuteBackLast<TLast>(new_pxc_weights, corrects, learingRate);
+    ////        //Debug.Log($"back last {this.layers.Length - 1}");
+
+    ////        curr.weights = new_pxc_weights;
+    ////    }
+
+    ////    for (var i = layers.Length - 1; i-- > 1;)
+    ////    {
+    ////        var prev = layers[i - 1];
+    ////        var curr = layers[i];
+    ////        var next = layers[i + 1];
+
+    ////        (prev, curr, next).ExecuteBack<TOther>(learingRate);
+    ////        //Debug.Log($"back {i}");
+    ////    }
+    ////}
+
+    public JobHandle ExecuteForwardWithJob(NnLayer[] layers, JobHandle deps)
+    {
+        for (var i = 1; i < layers.Length - 1; i++)
+        {
+            var prev = layers[i - 1];
+            var curr = layers[i];
+
+            deps = (prev, curr).ExecuteWithJob<TOther>(deps);
+        }
+        {
+            var prev = layers[layers.Length - 2];
+            var curr = layers[layers.Length - 1];
+
+            deps = (prev, curr).ExecuteWithJob<TLast>(deps);
+        }
+
+        return deps;
+    }
+    public JobHandle ExecuteBackwordWithJob(NnLayer[] layers, NativeArray<number> corrects, float learingRate, JobHandle deps)
     {
         {
-            var prev = this.layers[this.layers.Length - 2];
-            var curr = this.layers[this.layers.Length - 1];
+            ref var prev = ref layers[layers.Length - 2];
+            ref var curr = ref layers[layers.Length - 1];
 
-            (prev, curr).ExecuteBackLast<Sigmoid>(corrects, learingRate);
+            curr.weights_next_frame = new NnWeights<number>
+            {
+                weights = new NativeArray<number>(
+                    curr.weights.length, Allocator.TempJob, NativeArrayOptions.UninitializedMemory),
+                width = curr.weights.width,
+            };
+
+            deps = (prev, curr).ExecuteBackLastWithJob<TLast>(corrects, learingRate, deps);
             //Debug.Log($"back last {this.layers.Length - 1}");
         }
 
         for (var i = layers.Length - 1; i-- > 1;)
         {
-            var prev = this.layers[i - 1];
-            var curr = this.layers[i];
-            var next = this.layers[i + 1];
+            ref var prev = ref layers[i - 1];
+            ref var curr = ref layers[i];
+            ref var next = ref layers[i + 1];
 
-            (prev, curr, next).ExecuteBack<ReLU>(learingRate);
-            //Debug.Log($"back {i}");
-        }
-    }
+            curr.weights_next_frame = new NnWeights<number>
+            {
+                weights = new NativeArray<number>(
+                    curr.weights.length, Allocator.TempJob, NativeArrayOptions.UninitializedMemory),
+                width = curr.weights.width,
+            };
 
-    public void ExecuteForward2()
-    {
-        var dep = default(JobHandle);
-        for (var i = 1; i < this.layers.Length - 1; i++)
-        {
-            var prev = this.layers[i - 1];
-            var curr = this.layers[i];
-
-            dep = (prev, curr).Execute2<ReLU>(dep);
-        }
-        {
-            var prev = this.layers[this.layers.Length - 2];
-            var curr = this.layers[this.layers.Length - 1];
-
-            dep = (prev, curr).Execute2<Sigmoid>(dep);
+            deps = (prev, curr, next).ExecuteBackWithJob<TOther>(learingRate, deps);
         }
 
-        dep.Complete();
-    }
-    public void ExecuteBack2(NativeArray<number> corrects, float learingRate)
-    {
-        var dep = default(JobHandle);
-
-        {
-            var prev = this.layers[this.layers.Length - 2];
-            var curr = this.layers[this.layers.Length - 1];
-
-            dep = (prev, curr).ExecuteBackLast2<Sigmoid>(corrects, learingRate, dep);
-        }
-
-        for (var i = layers.Length - 1; i-- > 1;)
-        {
-            var prev = this.layers[i - 1];
-            var curr = this.layers[i];
-            var next = this.layers[i + 1];
-
-            dep = (prev, curr, next).ExecuteBack2<ReLU>(learingRate, dep);
-        }
-
-        dep.Complete();
+        return deps;
     }
 }
 
+public struct NnUinform<TActivation> : INnExecutor
+    where TActivation : struct, IActivationFunction
+{
 
-public interface IActivationFunction
-{
-    number Activate(number u);
-    number Prime(number a);
+    NnOtherAndLast<TActivation, TActivation> _base;
+
+
+    public void InitWeights(NnLayer[] layers) =>
+        this._base.InitWeights(layers);
+
+    public JobHandle ExecuteBackwordWithJob(NnLayer[] layers, NativeArray<number> corrects, float learingRate, JobHandle deps) =>
+        this._base.ExecuteBackwordWithJob(layers, corrects, learingRate, deps);
+
+    public JobHandle ExecuteForwardWithJob(NnLayer[] layers, JobHandle deps) =>
+        this._base.ExecuteForwardWithJob(layers, deps);
 }
-public struct ReLU : IActivationFunction
-{
-    public number Activate(number u) => max(u, 0.0);
-    public number Prime(number a) => sign(a);
-}
-public struct Sigmoid : IActivationFunction
-{
-    //public number Activate(number u) => 1.0 / (1.0 + exp(-u));
-    public number Activate(number u)
-    {
-        var x = (1.0 + exp(-u));
-        if (x == 0) return 0;
-        return 1.0 / x;
-    }
-    public number Prime(number a) => a * (1.0 - a);
-}
-public struct Affine : IActivationFunction
-{
-    public number Activate(number u) => u;
-    public number Prime(number a) => 1;
-}
+
+//public struct Nn : INnExecutor
+//{
+//    public void InitWeights(NnLayer[] layers)
+//    {
+
+//    }
+
+//    public void ExecuteForward(NnLayer[] layers)
+//    {
+
+//    }
+//    public void ExecuteBackword(NnLayer[] layers, NativeArray<number> corrects, float learingRate)
+//    {
+
+//    }
+
+//    public void ExecuteForwardWithJob(NnLayer[] layers)
+//    {
+
+//    }
+//    public void ExecuteBackwordWithJob(NnLayer[] layers, NativeArray<number> corrects, float learingRate)
+//    {
+
+//    }
+//}
