@@ -11,7 +11,7 @@ using Unity.Mathematics;
 using static Unity.Mathematics.math;
 using System.Runtime.ConstrainedExecution;
 
-using number = System.Double;
+using number = System.Single;
 using static UnityEditor.Experimental.GraphView.GraphView;
 
 [System.Serializable]

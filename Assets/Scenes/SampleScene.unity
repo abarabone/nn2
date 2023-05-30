@@ -341,7 +341,7 @@ MonoBehaviour:
   nn:
     layers: []
   epoc: 0
-  nodeList: 6400000064000000640000006400000064000000
+  nodeList: 64000000640000006400000064000000640000006400000064000000
   learingRate: 0.05
   show_layers:
   - acts: []

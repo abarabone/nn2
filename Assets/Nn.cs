@@ -12,7 +12,7 @@ using static Unity.Mathematics.math;
 using System.Runtime.ConstrainedExecution;
 using Unity.VisualScripting;
 
-using number = System.Double;
+using number = System.Single;
 
 public class Nn : MonoBehaviour
 {
@@ -21,7 +21,7 @@ public class Nn : MonoBehaviour
     public int epoc;
 
     public int[] nodeList;
-    public float learingRate;
+    public number learingRate;
 
     public ShowLayer[] show_layers;
 

@@ -11,7 +11,7 @@ using Unity.Mathematics;
 using static Unity.Mathematics.math;
 using System.Runtime.ConstrainedExecution;
 
-using number = System.Double;
+using number = System.Single;
 
 [System.Serializable]
 public struct NnLayer : IDisposable
@@ -188,10 +188,10 @@ static public class WeightExtension
     }
 
     static public unsafe void InitXivier(this NnWeights<number> ws) =>
-        ws.initX1X2(1.0 / sqrt(ws.widthOfNodes));
+        ws.initX1X2((number)(1.0 / sqrt((double)ws.widthOfNodes)));
 
     static public unsafe void InitHe(this NnWeights<number> ws) =>
-        ws.initX1X2(sqrt(2.0 / ws.widthOfNodes));
+        ws.initX1X2((number)sqrt(2.0 / (double)ws.widthOfNodes));
 
     static unsafe void initX1X2(this NnWeights<number> ws, number std_deviation)
     {
@@ -201,8 +201,8 @@ static public class WeightExtension
         var pi2 = 2.0 * math.PI_DBL;
 
         (number x1, number x2) calc_x1x2() => (
-            x1: sqrt(-2.0 * log(rnd.NextDouble())) * std_deviation,
-            x2: pi2 * rnd.NextDouble());
+            x1: (number)sqrt((double)(-2.0 * log(rnd.NextDouble()))) * std_deviation,
+            x2: (number)(pi2 * rnd.NextDouble()));
 
         for (var io = 0; io < ws.length >> 1; io++)
         {
