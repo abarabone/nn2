@@ -12,7 +12,12 @@ using static Unity.Mathematics.math;
 using System.Runtime.ConstrainedExecution;
 using Unity.VisualScripting;
 
+using nn;
+using numunit = System.Single;
 using number = System.Single;
+//using nn.simd;
+//using numunit = System.Single;
+//using number = Unity.Mathematics.float4;
 
 public class Nn : MonoBehaviour
 {
@@ -21,7 +26,7 @@ public class Nn : MonoBehaviour
     public int epoc;
 
     public int[] nodeList;
-    public number learingRate;
+    public float learingRate;
 
     public ShowLayer[] show_layers;
 
@@ -45,17 +50,19 @@ public class Nn : MonoBehaviour
     unsafe void Update()
     {
         //this.deps.Complete();
+        //this.nn.switchWeightBuffers();
         this.deps = default;
 
         var ia = this.nn.layers.First().activations;
         var oa = this.nn.layers.Last().activations;
 
-        UnsafeUtility.MemClear(ia.activations.GetUnsafePtr(), ia.lengthOfNodes * sizeof(number));
+        var p = (numunit*)ia.currents.GetUnsafePtr();
+        UnsafeUtility.MemClear(p, ia.lengthOfNodes * sizeof(numunit));
         var i = Unity.Mathematics.Random.CreateFromIndex((uint)Time.frameCount).NextInt(0, ia.lengthOfNodes);
-        ia[i] = 1;
+        p[i] = 1;
 
         this.deps = this.exe.ExecuteForwardWithJob(this.nn.layers, this.deps);
-        this.deps = this.exe.ExecuteBackwordWithJob(this.nn.layers, ia.activations, this.learingRate, this.deps);
+        this.deps = this.exe.ExecuteBackwordWithJob(this.nn.layers, ia.currents, this.learingRate, this.deps);
         JobHandle.ScheduleBatchedJobs();
         //this.exe.ExecuteForward(this.nn.layers);
         //this.exe.ExecuteBackword(this.nn.layers, ia.activations, this.learingRate);
@@ -71,10 +78,10 @@ public class Nn : MonoBehaviour
 
         var ia = this.nn.layers.First().activations;
         var oa = this.nn.layers.Last().activations;
-        logger($"i: ", ia.activations);
-        logger($"o: ", oa.activations);
+        logger($"i: ", ia.currents);
+        logger($"o: ", oa.currents);
 
-        //this.show_layers = this.nn.layers.toShow();
+        this.show_layers = this.nn.layers.toShow();
     }
     private void OnDestroy()
     {
@@ -83,7 +90,7 @@ public class Nn : MonoBehaviour
 
     void logger<T>(string desc, NativeArray<T> arr) where T:struct
     {
-        var s = string.Join(" ", arr.Select(x => $"{x:f2}").Prepend(desc).SkipLast(1));
+        var s = string.Join(" ", arr.Select(x => $"{x:f2}").Prepend(desc));
         Debug.Log(s);
     }
 }
@@ -105,11 +112,11 @@ public class Nn : MonoBehaviour
 //}
 
 
-public struct NodeUnit
-{
-    public float a;
+//public struct NodeUnit
+//{
+//    public float a;
 
-}
+//}
 
 
 [Serializable]
@@ -129,25 +136,41 @@ public class ShowLayer
     }
 }
 
+//[Serializable]
+//public class ShowLayer4
+//{
+//    //[SerializeField]
+//    public number4[] acts;
+
+//    //[SerializeField]
+//    public we[] weights;
+
+//    [Serializable]
+//    public class we
+//    {
+//        //[SerializeField]
+//        public number4[] weights;
+//    }
+//}
+
 static public class ShowExtension
 {
     static public ShowLayer[] toShow(this NnLayer[] layers)
     {
         var qa =
             from l in layers
-            select l.activations.activations
+            select l.activations.currents
             ;
         var qw =
             from l in layers
             select
-                from w in l.weights.weights.Chunks(l.weights.widthWithBias)
+                from w in l.weights.values.Chunks(l.weights.lengthOfUnits)
                 select w
             ;
 
         return qa.Zip(qw, (x, y) => new ShowLayer
         {
-            acts = x
-                .ToArray(),
+            acts = x.ToArray(),
             weights = y
                 .Select(ws => new ShowLayer.we
                 {
@@ -157,6 +180,32 @@ static public class ShowExtension
         })
         .ToArray();
     }
+    //static public ShowLayer4[] toShow(this NnLayer4[] layers)
+    //{
+    //    var qa =
+    //        from l in layers
+    //        select l.activations.currents
+    //        ;
+    //    var qw =
+    //        from l in layers
+    //        select
+    //            from w in l.weights.c4xp.Chunks(l.weights.length)
+    //            select w
+    //        ;
+
+    //    return qa.Zip(qw, (x, y) => new ShowLayer4
+    //    {
+    //        acts = x
+    //            .ToArray(),
+    //        weights = y
+    //            .Select(ws => new ShowLayer4.we
+    //            {
+    //                weights = ws.ToArray(),
+    //            })
+    //            .ToArray()
+    //    })
+    //    .ToArray();
+    //}
 
     // 指定サイズのチャンクに分割する拡張メソッド
     public static IEnumerable<IEnumerable<T>> Chunks<T>

@@ -341,11 +341,9 @@ MonoBehaviour:
   nn:
     layers: []
   epoc: 0
-  nodeList: 64000000640000006400000064000000640000006400000064000000
+  nodeList: 200000002000000020000000
   learingRate: 0.05
-  show_layers:
-  - acts: []
-    weights: []
+  show_layers: []
 --- !u!4 &983497985
 Transform:
   m_ObjectHideFlags: 0
