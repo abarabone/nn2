@@ -13,8 +13,8 @@ using System.Runtime.ConstrainedExecution;
 
 namespace nn
 {
-    using number = System.Single;
-    using static Unity.Burst.Intrinsics.X86.Avx;
+    using number = System.Double;
+    //using static Unity.Burst.Intrinsics.X86.Avx;
 
     [System.Serializable]
     public struct NnLayer : IDisposable

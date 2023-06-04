@@ -14,7 +14,7 @@ using System.Runtime.ConstrainedExecution;
 namespace nn.simd
 {
     using number = Unity.Mathematics.float4;
-    using static UnityEditor.Experimental.GraphView.GraphView;
+    //using static UnityEditor.Experimental.GraphView.GraphView;
 
 
     [System.Serializable]

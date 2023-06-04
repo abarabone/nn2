@@ -341,7 +341,7 @@ MonoBehaviour:
   nn:
     layers: []
   epoc: 0
-  nodeList: 200000002000000020000000
+  nodeList: 8000000080000000800000008000000080000000
   learingRate: 0.05
   show_layers: []
 --- !u!4 &983497985

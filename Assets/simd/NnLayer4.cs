@@ -15,7 +15,7 @@ namespace nn.simd
 {
 
     using number = Unity.Mathematics.float4;
-    using static Unity.Burst.Intrinsics.X86.Avx;
+    //using static Unity.Burst.Intrinsics.X86.Avx;
 
     [System.Serializable]
     public struct NnLayer : IDisposable

@@ -13,7 +13,7 @@ using System.Runtime.ConstrainedExecution;
 
 namespace nn
 {
-    using number = System.Single;
+    using number = System.Double;
 
 
     [System.Serializable]
