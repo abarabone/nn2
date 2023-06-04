@@ -15,7 +15,7 @@ using System.Numerics;
 namespace nn
 {
 
-    using number = System.Double;
+    using number = System.Single;
     //using Unity.VisualScripting;
 
 

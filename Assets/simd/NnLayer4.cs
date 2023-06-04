@@ -149,10 +149,10 @@ namespace nn.simd
         }
 
         static public unsafe void InitXivier(this NnWeights ws) =>
-            ws.initX1X2((number)(1.0 / sqrt((double)ws.lengthOfNodes)));
+            ws.initX1X2((number)(1.0 / sqrt((double)ws.widthOfNodes)));
 
         static public unsafe void InitHe(this NnWeights ws) =>
-            ws.initX1X2((number)sqrt(2.0 / (double)ws.lengthOfNodes));
+            ws.initX1X2((number)sqrt(2.0 / (double)ws.widthOfNodes));
 
         static unsafe void initX1X2(this NnWeights ws, number std_deviation)
         {

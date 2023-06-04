@@ -13,7 +13,7 @@ using System.Runtime.ConstrainedExecution;
 
 namespace nn
 {
-    using number = System.Double;
+    using number = System.Single;
 
 
     [System.Serializable]
@@ -47,16 +47,16 @@ namespace nn
         where T : struct
     {
         public NativeArray<T> values;
-        public int width;
+        public int width;//pxc
+        public int widthOfNodes => this.width - 1;
+        public int widthOfUnits => this.width;
 
         public int length => this.values.Length;
-        public int lengthOfNodes => this.length;
-        public int lengthOfUnits => this.length;
 
-        public T this[int ix, int iy]
+        public T this[int ip, int ic]
         {
-            get => this.values[iy * this.width + ix];
-            set => this.values[iy * this.width + ix] = value;
+            get => this.values[ic * this.width + ip];
+            set => this.values[ic * this.width + ip] = value;
         }
 
         public void Dispose()

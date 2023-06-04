@@ -14,7 +14,7 @@ using System.Runtime.ConstrainedExecution;
 namespace nn
 {
 
-    using number = System.Double;
+    using number = System.Single;
     //using static UnityEditor.Experimental.GraphView.GraphView;
 
     [System.Serializable]

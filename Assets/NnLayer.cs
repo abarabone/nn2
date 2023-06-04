@@ -13,7 +13,7 @@ using System.Runtime.ConstrainedExecution;
 
 namespace nn
 {
-    using number = System.Double;
+    using number = System.Single;
     //using static Unity.Burst.Intrinsics.X86.Avx;
 
     [System.Serializable]
@@ -186,10 +186,10 @@ namespace nn
         }
 
         static public unsafe void InitXivier(this NnWeights<number> ws) =>
-            ws.initX1X2((number)(1.0 / sqrt((double)ws.length)));
+            ws.initX1X2((number)(1.0 / sqrt((double)ws.widthOfNodes)));
 
         static public unsafe void InitHe(this NnWeights<number> ws) =>
-            ws.initX1X2((number)sqrt(2.0 / (double)ws.length));
+            ws.initX1X2((number)sqrt(2.0 / (double)ws.widthOfNodes));
 
         static unsafe void initX1X2(this NnWeights<number> ws, number std_deviation)
         {

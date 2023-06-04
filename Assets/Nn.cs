@@ -15,12 +15,12 @@ using Unity.VisualScripting;
 //using nn;
 //using numunit = System.Single;
 //using number = System.Single;
-using nn;
-using numunit = System.Double;
-using number = System.Double;
-//using nn.simd;
-//using numunit = System.Single;
-//using number = Unity.Mathematics.float4;
+//using nn;
+//using numunit = System.Double;
+//using number = System.Double;
+using nn.simd;
+using numunit = System.Single;
+using number = Unity.Mathematics.float4;
 
 public class Nn : MonoBehaviour
 {
@@ -84,7 +84,7 @@ public class Nn : MonoBehaviour
         logger($"i: ", ia.currents);
         logger($"o: ", oa.currents);
 
-        this.show_layers = this.nn.layers.toShow();
+        //this.show_layers = this.nn.layers.toShow();
     }
     private void OnDestroy()
     {
@@ -167,7 +167,7 @@ static public class ShowExtension
         var qw =
             from l in layers
             select
-                from w in l.weights.values.Chunks(l.weights.width)
+                from w in l.weights.values.Chunks(l.weights.widthOfUnits)
                 select w
             ;
 
