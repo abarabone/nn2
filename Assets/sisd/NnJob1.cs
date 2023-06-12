@@ -12,12 +12,11 @@ using static Unity.Mathematics.math;
 using System.Runtime.ConstrainedExecution;
 using System.Numerics;
 
-namespace nn.simd
+namespace nn.sisd
 {
 
-    using number = Unity.Mathematics.float4;
-    using numbermt = Unity.Mathematics.float4x4;
-    //using Unity.VisualScripting;
+    //using number = System.Single;
+    using number = Unity.Mathematics.float4;// 応急処置　ジェネリクスでなんとかできないので…
 
 
 
@@ -61,10 +60,7 @@ namespace nn.simd
 
                 var ip = ip_n * (sizeof(number) >> 2);
                 sum +=
-                    a.xxxx * this.cxp_weithgs[ic_n, ip + 0] +
-                    a.yyyy * this.cxp_weithgs[ic_n, ip + 1] +
-                    a.zzzz * this.cxp_weithgs[ic_n, ip + 2] +
-                    a.wwww * this.cxp_weithgs[ic_n, ip + 3];
+                    a * this.cxp_weithgs[ic_n, ip + 0];
             }
             var ip_ = ip_n * (sizeof(number) >> 2);
             sum += this.cxp_weithgs[ic_n, ip_];
@@ -119,10 +115,7 @@ namespace nn.simd
                 var a = this.prev_activations[ip_n];
 
                 var ip = ip_n * (sizeof(number) >> 2);
-                this.dst_cxp_weithgs_delta[ic_n, ip + 0] = drate * a.xxxx;
-                this.dst_cxp_weithgs_delta[ic_n, ip + 1] = drate * a.yyyy;
-                this.dst_cxp_weithgs_delta[ic_n, ip + 2] = drate * a.zzzz;
-                this.dst_cxp_weithgs_delta[ic_n, ip + 3] = drate * a.wwww;
+                this.dst_cxp_weithgs_delta[ic_n, ip + 0] = drate * a;
             }
             var ip_ = ip_n * (sizeof(number) >> 2);
             this.dst_cxp_weithgs_delta[ic_n, ip_] = drate;
@@ -168,13 +161,8 @@ namespace nn.simd
                 var ic = ic_n * (sizeof(number) >> 2);
                 var nd = this.next_ds[in_n];
                 var dx = nd * this.nxc_weithgs[in_n, ic + 0];
-                var dy = nd * this.nxc_weithgs[in_n, ic + 1];
-                var dz = nd * this.nxc_weithgs[in_n, ic + 2];
-                var dw = nd * this.nxc_weithgs[in_n, ic + 3];
-                var md = new numbermt(dx, dy, dz, dw);
-                var tmd = math.transpose(md);
 
-                sumd += tmd.c0 + tmd.c1 + tmd.c2 + tmd.c3;
+                sumd += dx;
             }
             var d = sumd * new TAct().Prime(this.curr_activations[ic_n]);
             this.curr_ds[ic_n] = d;
@@ -187,10 +175,7 @@ namespace nn.simd
                 var a = this.prev_activations[ip_n];
 
                 var ip = ip_n * (sizeof(number) >> 2);
-                this.dst_cxp_weithgs_delta[ic_n, ip + 0] = drate * a.xxxx;
-                this.dst_cxp_weithgs_delta[ic_n, ip + 1] = drate * a.yyyy;
-                this.dst_cxp_weithgs_delta[ic_n, ip + 2] = drate * a.zzzz;
-                this.dst_cxp_weithgs_delta[ic_n, ip + 3] = drate * a.wwww;
+                this.dst_cxp_weithgs_delta[ic_n, ip + 0] = drate * a;
             }
             var ip_ = ip_n * (sizeof(number) >> 2);
             this.dst_cxp_weithgs_delta[ic_n, ip_] = drate;

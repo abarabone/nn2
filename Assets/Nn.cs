@@ -12,20 +12,19 @@ using static Unity.Mathematics.math;
 using System.Runtime.ConstrainedExecution;
 using Unity.VisualScripting;
 
-//using nn;
+using nn;
+using nn.simd;
 //using numunit = System.Single;
 //using number = System.Single;
-//using nn;
 //using numunit = System.Double;
 //using number = System.Double;
-using nn.simd;
 using numunit = System.Single;
 using number = Unity.Mathematics.float4;
 
 public class Nn : MonoBehaviour
 {
 
-    public NnLayers nn;
+    public NnLayers<number> nn;
     public int epoc;
 
     public int[] nodeList;
@@ -40,7 +39,7 @@ public class Nn : MonoBehaviour
     // Start is called before the first frame update
     void Start()
     {
-        this.nn = new NnLayers(this.nodeList);
+        this.nn = new NnLayers<number>(this.nodeList);
 
         this.exe.InitWeights(this.nn.layers);
     }
@@ -162,7 +161,7 @@ public class ShowLayer
 
 static public class ShowExtension
 {
-    static public ShowLayer[] toShow(this NnLayer[] layers)
+    static public ShowLayer[] toShow(this NnLayer<number>[] layers)
     {
         var qa =
             from l in layers
