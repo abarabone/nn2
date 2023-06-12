@@ -11,7 +11,7 @@ using Unity.Mathematics;
 using static Unity.Mathematics.math;
 using System.Runtime.ConstrainedExecution;
 
-namespace nn
+namespace nn.sisd
 {
 
     using number = System.Single;

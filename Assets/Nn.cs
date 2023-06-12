@@ -52,26 +52,28 @@ public class Nn : MonoBehaviour
     // Update is called once per frame
     unsafe void Update()
     {
-        //this.deps.Complete();
+        this.deps.Complete();
         //this.nn.switchWeightBuffers();
         this.deps = default;
 
+        //this.nn.AllocActivationWorks();
+        this.nn.AllocDeltaWorks();
         var ia = this.nn.layers.First().activations;
         var oa = this.nn.layers.Last().activations;
 
-        var p = (numunit*)ia.currents.GetUnsafePtr();
+        var p = (numunit*)ia.currents.GetUnsafeReadOnlyPtr();
         UnsafeUtility.MemClear(p, ia.lengthOfNodes * sizeof(numunit));
         var i = Unity.Mathematics.Random.CreateFromIndex((uint)Time.frameCount).NextInt(0, ia.lengthOfNodes);
         p[i] = 1;
 
         this.deps = this.exe.ExecuteForwardWithJob(this.nn.layers, this.deps);
         this.deps = this.exe.ExecuteBackwordWithJob(this.nn.layers, ia.currents, this.learingRate, this.deps);
+        this.deps = this.nn.AddDeltaToWeightsWithDisposeTempJob(this.deps);
         JobHandle.ScheduleBatchedJobs();
         //this.exe.ExecuteForward(this.nn.layers);
         //this.exe.ExecuteBackword(this.nn.layers, ia.activations, this.learingRate);
 
-        this.deps.Complete();
-        this.nn.switchWeightBuffers();
+        //this.deps.Complete();
         this.epoc++;
     }
 
@@ -88,6 +90,8 @@ public class Nn : MonoBehaviour
     }
     private void OnDestroy()
     {
+        this.deps.Complete();
+
         this.nn.Dispose();
     }
 

@@ -19,29 +19,37 @@ namespace nn.simd
 
 
 
-    //struct aaa
-    //{
-    //    void aaaaa() => new NnActivations4<NnActivation4<number4>, number4>();
-    //}
-
     [System.Serializable]
-    public struct NnActivations : IDisposable
+    public struct NnActivations<T> : IDisposable where T:unmanaged
     {
-        public NativeArray<number> currents;
+        public NativeArray<T> currents;
 
-        public int lengthOfNodes => this.currents.Length * 4;
+
+        public int lengthOfNodes => this.currents.Length * unitlength;
         public int lengthOfUnits => this.currents.Length;
 
-        //public IActivationValue<number4> this[int i]
-        //{
-        //    get => new NnActivation4() { value = this.currents[i] };
-        //    set => this.currents[i] = value.Value;
-        //}
-        public number this[int i]
+        public T this[int i]
         {
             get => this.currents[i];
             set => this.currents[i] = value;
         }
+
+
+        unsafe static public int unitlength => sizeof(T) >> 2;
+        static NativeArray<T> alloc(int length, Allocator allocator = Allocator.TempJob) =>
+            new NativeArray<T>(length, allocator, NativeArrayOptions.UninitializedMemory);
+
+
+        //public void SetNodeLength(int nodeLength) =>
+        //    this.currents = alloc(nodeLength / unitlength, Allocator.);
+
+        public NnActivations(int nodeLength) =>
+            this.currents = alloc(nodeLength / unitlength, Allocator.Persistent);
+
+        public NnActivations<T> CloneForTempJob() => new NnActivations<T>
+        {
+            currents = alloc(this.lengthOfUnits),
+        };
 
         public void Dispose()
         {
@@ -50,56 +58,60 @@ namespace nn.simd
             this.currents.Dispose();
         }
     }
-    //public interface IActivationValue<T> where T : struct
-    //{
-    //    public T Value { get; set; }
-    //    //public void init(NativeArray<T> na, int i);
-    //}
-    //public struct NnActivation4 : IActivationValue<number4>
-    //{
-    //    public number4 value;
-    //    public number4 Value
-    //    {
-    //        get => this.value;
-    //        set => this.value = value;
-    //    }
-    //    //public void init(NativeArray<T> na, int i)
-    //    //{
-    //    //    this.currents = na;
-    //    //}
-
-    //    static public number4 operator *(NnActivation4 l, NnWeights4 r)
-    //    {
-    //        return 0;
-    //    }
-    //}
 
 
     [System.Serializable]
-    public struct NnWeights : IDisposable
+    public struct NnWeights<T> : IDisposable where T : unmanaged
     {
-        public NativeArray<number> c4xp;
-        public int width4;
+        NativeArray<T> cn_x_p1;
+        int width_n;
 
-        public NativeArray<number> values => this.c4xp;//
 
-        public int widthOfNodes => this.width4 * 4;
-        public int widthOfUnits => this.width4;
+        public NativeArray<T> values => this.cn_x_p1;//
 
-        public int lengthOfUnits => this.c4xp.Length;
-        public int lengthOfNodes => this.c4xp.Length * 4;
+        public int widthOfNodes => this.width_n * unitlength;
+        public int widthOfUnits => this.width_n;
 
-        public number this[int ic4, int ip]
+        public int lengthOfUnits => this.cn_x_p1.Length;
+        public int lengthOfNodes => this.cn_x_p1.Length * unitlength;
+
+        public T this[int ic_n, int ip_1]
         {
-            get => this.c4xp[ip * this.widthOfUnits + ic4];
-            set => this.c4xp[ip * this.widthOfUnits + ic4] = value;
+            get => this.cn_x_p1[ip_1 * this.widthOfUnits + ic_n];
+            set => this.cn_x_p1[ip_1 * this.widthOfUnits + ic_n] = value;
         }
+        public T this[int i_n]
+        {
+            get => this.cn_x_p1[i_n];
+            set => this.cn_x_p1[i_n] = value;
+        }
+
+
+        unsafe static public int unitlength => sizeof(T) >> 2;
+        static NativeArray<T> alloc(int length, Allocator allocator = Allocator.TempJob) =>
+            new NativeArray<T>(length, allocator, NativeArrayOptions.UninitializedMemory);
+
+
+        public NnWeights(int prevLayerNodeLength, int currentLayerNodeLength)
+        {
+            var weightWidth = currentLayerNodeLength / unitlength;
+            var weightHeight = prevLayerNodeLength + 1;
+            var weightLength = weightWidth * weightHeight;
+
+            this.cn_x_p1 = alloc(weightLength, Allocator.Persistent);
+            this.width_n = weightWidth;
+        }
+        public NnWeights<T> CloneForTempJob() => new NnWeights<T>
+        {
+            cn_x_p1 = alloc(this.lengthOfUnits),
+            width_n = this.width_n,
+        };
 
         public void Dispose()
         {
-            if (!this.c4xp.IsCreated) return;
+            if (!this.cn_x_p1.IsCreated) return;
 
-            this.c4xp.Dispose();
+            this.cn_x_p1.Dispose();
         }
     }
 
@@ -111,24 +123,24 @@ namespace nn.simd
     {
         number Activate(number u);
         number Prime(number a);
-        void InitWeights(NnWeights weights);
+        void InitWeights(NnWeights<number> weights);
     }
     public struct ReLU : IActivationFunction
     {
         public number Activate(number u) => max(u, 0);
         public number Prime(number a) => sign(a);
-        public void InitWeights(NnWeights weights) => weights.InitHe();
+        public void InitWeights(NnWeights<number> weights) => weights.InitHe();
     }
     public struct Sigmoid : IActivationFunction
     {
         public number Activate(number u) => 1 / (1 + exp(-u));
         public number Prime(number a) => a * (1 - a);
-        public void InitWeights(NnWeights weights) => weights.InitXivier();
+        public void InitWeights(NnWeights<number> weights) => weights.InitXivier();
     }
     public struct Affine4 : IActivationFunction
     {
         public number Activate(number u) => u;
         public number Prime(number a) => 1;
-        public void InitWeights(NnWeights weights) => weights.InitRandom();
+        public void InitWeights(NnWeights<number> weights) => weights.InitRandom();
     }
 }

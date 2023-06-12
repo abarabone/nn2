@@ -40,16 +40,69 @@ namespace nn.simd
             }
         }
 
-        public void switchWeightBuffers()
+
+        ////public void AllocActivationWorks()
+        ////{
+        ////    for (var i = 0; i < this.layers.Length; i++)
+        ////    {
+        ////        ref var l = ref this.layers[i];
+
+        ////        l.activations = l.activations.CloneForTempJob();
+        ////    }
+        ////}
+        public void AllocDeltaWorks()
         {
             for (var i = 0; i < this.layers.Length; i++)
             {
                 ref var l = ref this.layers[i];
-                l.weights.Dispose();//
-                l.weights = l.weights_next_frame;
-                l.weights_next_frame = default;
+
+                l.activations_delta = l.activations.CloneForTempJob();
+                l.weights_delta = l.weights.CloneForTempJob();
             }
         }
+
+        public JobHandle AddDeltaToWeightsWithDisposeTempJob(JobHandle dep)
+        {
+            for (var i = 0; i < this.layers.Length; i++)
+            {
+                ref var l = ref this.layers[i];
+
+                dep = l.ExecuteUpdateWeightsJob(dep);
+
+                //dep = l.activations.currents.Dispose(dep);
+                dep = l.activations_delta.currents.Dispose(dep);
+                dep = l.weights_delta.values.Dispose(dep);
+
+                l.activations_delta = default;
+                l.weights_delta = default;
+            }
+            return dep;
+        }
+        ////public JobHandle DisposeTempJobActivations(JobHandle dep)
+        ////{
+        ////    for (var i = 0; i < this.layers.Length; i++)
+        ////    {
+        ////        ref var l = ref this.layers[i];
+
+        ////        //dep = l.activations.currents.Dispose(dep);
+        ////        dep = l.activations_delta.currents.Dispose(dep);
+        ////    }
+        ////    return dep;
+        ////}
+        //public JobHandle DisposeTempJobAll(JobHandle dep)
+        //{
+        //    for (var i = 0; i < this.layers.Length; i++)
+        //    {
+        //        ref var l = ref this.layers[i];
+
+        ////        dep = l.activations.currents.Dispose(dep);
+        //        dep = l.activations_delta.currents.Dispose(dep);
+        //        dep = l.weights_delta.values.Dispose(dep);
+        //l.activations_delta = default;
+        //        l.weights_delta = default;
+        //    }
+        //    return dep;
+        //}
     }
 
 
@@ -106,13 +159,6 @@ namespace nn.simd
                 ref var prev = ref layers[layers.Length - 2];
                 ref var curr = ref layers[layers.Length - 1];
 
-                curr.weights_next_frame = new NnWeights
-                {
-                    c4xp = new NativeArray<number>(
-                        curr.weights.lengthOfUnits, Allocator.TempJob, NativeArrayOptions.UninitializedMemory),
-                    width4 = curr.weights.width4,
-                };
-
                 deps = (prev, curr).ExecuteBackLastWithJob<TLast>(corrects, learingRate, deps);
                 //Debug.Log($"back last {this.layers.Length - 1}");
             }
@@ -122,13 +168,6 @@ namespace nn.simd
                 ref var prev = ref layers[i - 1];
                 ref var curr = ref layers[i];
                 ref var next = ref layers[i + 1];
-
-                curr.weights_next_frame = new NnWeights
-                {
-                    c4xp = new NativeArray<number>(
-                        curr.weights.lengthOfUnits, Allocator.TempJob, NativeArrayOptions.UninitializedMemory),
-                    width4 = curr.weights.width4,
-                };
 
                 deps = (prev, curr, next).ExecuteBackWithJob<TOther>(learingRate, deps);
             }

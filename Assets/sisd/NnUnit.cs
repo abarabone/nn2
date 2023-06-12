@@ -11,9 +11,10 @@ using Unity.Mathematics;
 using static Unity.Mathematics.math;
 using System.Runtime.ConstrainedExecution;
 
-namespace nn
+namespace nn.sisd
 {
     using number = System.Single;
+
 
 
     [System.Serializable]
@@ -70,6 +71,29 @@ namespace nn
 
 
 
+
+    public struct NnValue<T> where T : INnUnit
+    {
+        public T value;
+
+        static public NnValue<T> operator +(NnValue<T> l, NnValue<T> r) =>
+            new NnValue<T> { value = (T)l.value.Add(r.value) };
+        static public NnValue<T> operator *(NnValue<T> l, NnValue<T> r) =>
+            new NnValue<T> { value = (T)l.value.Mul(r.value) };
+    }
+
+    public interface INnUnit
+    {
+        INnUnit Add(INnUnit other);
+        INnUnit Mul(INnUnit other);
+    }
+    public struct NnFloat
+    {
+        public float value;
+
+        public NnFloat Add(NnFloat other) => new NnFloat { value = this.value + other.value };
+        public NnFloat Mul(NnFloat other) => new NnFloat { value = this.value * other.value };
+    }
 
 
     public interface IActivationFunction

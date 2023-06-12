@@ -12,7 +12,7 @@ using static Unity.Mathematics.math;
 using System.Runtime.ConstrainedExecution;
 using System.Numerics;
 
-namespace nn
+namespace nn.sisd
 {
 
     using number = System.Single;
