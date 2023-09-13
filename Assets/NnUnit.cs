@@ -14,9 +14,99 @@ using Unity.VisualScripting;
 
 namespace nn
 {
+    using P = D<float>;
+    
+
 
     //using number = Unity.Mathematics.float4;
     //using nn.simd;
+
+    using float4 = System.Single;
+
+
+    //public struct float
+
+
+
+    public static class D<T>
+    {
+        public struct E
+        {
+
+        }
+    }
+
+
+
+
+    public interface ICalculationSuport<T> where T:unmanaged
+    {
+        //T value { get; set; }
+
+    }
+    public struct floatsp : ICalculationSuport<float>
+    {
+
+    }
+    static public class aaaaa
+    {
+        static public void aaa<T1, T2>(this T1 a)
+            where T1:ICalculationSuport<T2>, new()
+            where T2:unmanaged
+        {
+            var t = new T1();
+        }
+
+        static void bbb()
+        {
+            new abc().aaa();
+        }
+    }
+
+    //public interface IActivationFunction
+    //{
+    //    T Activate<T>(T u) where T : unmanaged;
+    //    T Prime<T>(T a) where T : unmanaged;
+    //    void InitWeights<T>(NnWeights<T> weights) where T : unmanaged;
+    //}
+    public interface IActivationFunction
+    {
+        T Activate<T>(ICalculationSuport<T> u) where T : unmanaged;
+        T Prime<T>(ICalculationSuport<T> a) where T : unmanaged;
+        void InitWeights<T>(NnWeights<T> weights) where T : unmanaged;
+    }
+
+    public struct ReLU : IActivationFunction
+    {
+        public T Activate<T>(T u) where T : unmanaged => max(u, 0);
+        public T Prime<T>(T a) where T : unmanaged => sign(a);
+        public void InitWeights<T>(NnWeights<T> weights) where T : unmanaged => weights.InitHe();
+
+        //public number Activate(number u) => max(u, 0);
+        //public number Prime(number a) => sign(a);
+        //public void InitWeights(NnWeights<number> weights) => weights.InitHe();
+    }
+    public struct Sigmoid : IActivationFunction
+    {
+        public T Activate<T>(T u) where T : unmanaged => 1 / (1 + exp(-u));
+        public T Prime<T>(T a) where T : unmanaged => a * (1 - a);
+        public void InitWeights<T>(NnWeights<T> weights) where T : unmanaged => weights.InitXivier();
+
+        //public number Activate(number u) => 1 / (1 + exp(-u));
+        //public number Prime(number a) => a * (1 - a);
+        //public void InitWeights(NnWeights<number> weights) => weights.InitXivier();
+    }
+    public struct Affine : IActivationFunction
+    {
+        public T Activate<T>(T u) where T : unmanaged => u;
+        public T Prime<T>(T a) where T : unmanaged => 1;
+        public void InitWeights<T>(NnWeights<T> weights) where T : unmanaged => weights.InitRandom();
+
+        //public number Activate(number u) => u;
+        //public number Prime(number a) => 1;
+        //public void InitWeights(NnWeights<number> weights) => weights.InitRandom();
+    }
+
 
 
 

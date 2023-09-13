@@ -10,6 +10,7 @@ using Unity.Collections.LowLevel.Unsafe;
 using Unity.Mathematics;
 using static Unity.Mathematics.math;
 using System.Runtime.ConstrainedExecution;
+using Unity.VisualScripting;
 
 namespace nn
 {
@@ -52,6 +53,74 @@ namespace nn
     }
 
 
+
+
+    public static class Execute_NnLayerExtension
+    {
+        //static public void InitWeights<TAct>(this NnLayer layer)
+        //    where TAct : struct, IActivationFunction
+        //{
+        //    var f = new TAct();
+        //    foreach (var w in layer.weights.weights)
+        //    {
+        //        f.InitWeights(w);
+        //    }
+        //}
+
+
+        static public JobHandle ExecuteWithJob<Tact>(this (NnLayer<number> prev, NnLayer<number> curr) layers, JobHandle dep)
+            where Tact : struct, IActivationFunction
+        {
+            return new NnLayerForwardJob<Tact>
+            {
+                prev_activations = layers.prev.activations,
+                curr_activations = layers.curr.activations,
+                cxp_weithgs = layers.curr.weights,
+            }
+            .Schedule(layers.curr.activations.lengthOfUnits, 1, dep);
+        }
+        static public JobHandle ExecuteBackLastWithJob<Tact>(
+            this (NnLayer<number> prev, NnLayer<number> curr) layers, NativeArray<number> corrects, float learingRate, JobHandle dep)
+            where Tact : struct, IActivationFunction
+        {
+            return new NnLayerBackLastJob<Tact>
+            {
+                curr_activations = layers.curr.activations,
+                curr_ds = layers.curr.activations_delta,
+                curr_trains = corrects,
+                prev_activations = layers.prev.activations,
+                dst_cxp_weithgs_delta = layers.curr.weights_delta,
+                leaning_rate = learingRate,
+            }
+            .Schedule(layers.curr.activations.lengthOfUnits, 1, dep);
+        }
+        static public JobHandle ExecuteBackWithJob<Tact>(
+            this (NnLayer<number> prev, NnLayer<number> curr, NnLayer<number> next) layers, float learingRate, JobHandle dep)
+            where Tact : struct, IActivationFunction
+        {
+            return new NnLayerBackJob<Tact>
+            {
+                curr_activations = layers.curr.activations,
+                curr_ds = layers.curr.activations_delta,
+                prev_activations = layers.prev.activations,
+                dst_cxp_weithgs_delta = layers.curr.weights_delta,
+                nxc_weithgs = layers.next.weights,
+                next_ds = layers.next.activations_delta,
+                leaning_rate = learingRate,
+            }
+            .Schedule(layers.curr.activations.lengthOfUnits, 1, dep);
+        }
+
+        static public JobHandle ExecuteUpdateWeightsJob(this NnLayer<number> layer, JobHandle dep)
+        {
+            return new NnLayerUpdateWeightsJob
+            {
+                cxp_weithgs = layer.weights,
+                cxp_weithgs_delta = layer.weights_delta,
+            }
+            .Schedule(layer.weights.lengthOfUnits, 64, dep);
+        }
+    }
 
 
 }

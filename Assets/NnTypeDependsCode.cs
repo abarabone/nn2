@@ -33,12 +33,12 @@ namespace nn
 
 
 
-    public interface IActivationFunction
-    {
-        number Activate(number u);
-        number Prime(number a);
-        void InitWeights(NnWeights<number> weights);
-    }
+    //public interface IActivationFunction
+    //{
+    //    number Activate(number u);
+    //    number Prime(number a);
+    //    void InitWeights(NnWeights<number> weights);
+    //}
 
     //public struct ReLU : IActivationFunction
     //{
@@ -64,7 +64,6 @@ namespace nn
 
     static public class WeightExtension
     {
-
 
         static public unsafe void InitRandom(this NnWeights<number> ws)
         {
@@ -123,125 +122,6 @@ namespace nn
 
 
 
-
-
-
-    public static class NnLayerExtension
-    {
-        //static public void InitWeights<TAct>(this NnLayer layer)
-        //    where TAct : struct, IActivationFunction
-        //{
-        //    var f = new TAct();
-        //    foreach (var w in layer.weights.weights)
-        //    {
-        //        f.InitWeights(w);
-        //    }
-        //}
-
-
-        static public JobHandle ExecuteWithJob<Tact>(this (NnLayer<number> prev, NnLayer<number> curr) layers, JobHandle dep)
-            where Tact : struct, IActivationFunction
-        {
-            return new NnLayerForwardJob<Tact>
-            {
-                prev_activations = layers.prev.activations,
-                curr_activations = layers.curr.activations,
-                cxp_weithgs = layers.curr.weights,
-            }
-            .Schedule(layers.curr.activations.lengthOfUnits, 1, dep);
-        }
-        static public JobHandle ExecuteBackLastWithJob<Tact>(
-            this (NnLayer<number> prev, NnLayer<number> curr) layers, NativeArray<number> corrects, float learingRate, JobHandle dep)
-            where Tact : struct, IActivationFunction
-        {
-            return new NnLayerBackLastJob<Tact>
-            {
-                curr_activations = layers.curr.activations,
-                curr_ds = layers.curr.activations_delta,
-                curr_trains = corrects,
-                prev_activations = layers.prev.activations,
-                dst_cxp_weithgs_delta = layers.curr.weights_delta,
-                leaning_rate = learingRate,
-            }
-            .Schedule(layers.curr.activations.lengthOfUnits, 1, dep);
-        }
-        static public JobHandle ExecuteBackWithJob<Tact>(
-            this (NnLayer<number> prev, NnLayer<number> curr, NnLayer<number> next) layers, float learingRate, JobHandle dep)
-            where Tact : struct, IActivationFunction
-        {
-            return new NnLayerBackJob<Tact>
-            {
-                curr_activations = layers.curr.activations,
-                curr_ds = layers.curr.activations_delta,
-                prev_activations = layers.prev.activations,
-                dst_cxp_weithgs_delta = layers.curr.weights_delta,
-                nxc_weithgs = layers.next.weights,
-                next_ds = layers.next.activations_delta,
-                leaning_rate = learingRate,
-            }
-            .Schedule(layers.curr.activations.lengthOfUnits, 1, dep);
-        }
-
-        static public JobHandle ExecuteUpdateWeightsJob(this NnLayer<number> layer, JobHandle dep)
-        {
-            return new NnLayerUpdateWeightsJob
-            {
-                cxp_weithgs = layer.weights,
-                cxp_weithgs_delta = layer.weights_delta,
-            }
-            .Schedule(layer.weights.lengthOfUnits, 64, dep);
-        }
-    }
-
-
-
-
-    public static class LayersExtension
-    {
-
-        public static JobHandle AddDeltaToWeightsWithDisposeTempJob(this NnLayers<number> layers, JobHandle dep)
-        {
-            for (var i = 0; i < layers.layers.Length; i++)
-            {
-                ref var l = ref layers.layers[i];
-
-                dep = l.ExecuteUpdateWeightsJob(dep);
-
-                //dep = l.activations.currents.Dispose(dep);
-                dep = l.activations_delta.currents.Dispose(dep);
-                dep = l.weights_delta.values.Dispose(dep);
-
-                l.activations_delta = default;
-                l.weights_delta = default;
-            }
-            return dep;
-        }
-        ////public JobHandle DisposeTempJobActivations(JobHandle dep)
-        ////{
-        ////    for (var i = 0; i < this.layers.Length; i++)
-        ////    {
-        ////        ref var l = ref this.layers[i];
-
-        ////        //dep = l.activations.currents.Dispose(dep);
-        ////        dep = l.activations_delta.currents.Dispose(dep);
-        ////    }
-        ////    return dep;
-        ////}
-        //public JobHandle DisposeTempJobAll(JobHandle dep)
-        //{
-        //    for (var i = 0; i < this.layers.Length; i++)
-        //    {
-        //        ref var l = ref this.layers[i];
-
-        ////        dep = l.activations.currents.Dispose(dep);
-        //        dep = l.activations_delta.currents.Dispose(dep);
-        //        dep = l.weights_delta.values.Dispose(dep);
-        //l.activations_delta = default;
-        //        l.weights_delta = default;
-        //    }
-        //    return dep;
-        //}
-    }
 
 
 

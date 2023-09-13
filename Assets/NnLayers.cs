@@ -67,4 +67,56 @@ namespace nn
 
 
 
+
+
+    public static class WeightUpdate_NnLayersExtension
+    {
+
+        public static JobHandle AddDeltaToWeightsWithDisposeTempJob<T>(this NnLayers<T> layers, JobHandle dep)
+            where T: unmanaged
+        {
+            for (var i = 0; i < layers.layers.Length; i++)
+            {
+                ref var l = ref layers.layers[i];
+
+                dep = l.ExecuteUpdateWeightsJob(dep);
+
+                //dep = l.activations.currents.Dispose(dep);
+                dep = l.activations_delta.currents.Dispose(dep);
+                dep = l.weights_delta.values.Dispose(dep);
+
+                l.activations_delta = default;
+                l.weights_delta = default;
+            }
+            return dep;
+        }
+        ////public JobHandle DisposeTempJobActivations(JobHandle dep)
+        ////{
+        ////    for (var i = 0; i < this.layers.Length; i++)
+        ////    {
+        ////        ref var l = ref this.layers[i];
+
+        ////        //dep = l.activations.currents.Dispose(dep);
+        ////        dep = l.activations_delta.currents.Dispose(dep);
+        ////    }
+        ////    return dep;
+        ////}
+        //public JobHandle DisposeTempJobAll(JobHandle dep)
+        //{
+        //    for (var i = 0; i < this.layers.Length; i++)
+        //    {
+        //        ref var l = ref this.layers[i];
+
+        ////        dep = l.activations.currents.Dispose(dep);
+        //        dep = l.activations_delta.currents.Dispose(dep);
+        //        dep = l.weights_delta.values.Dispose(dep);
+        //l.activations_delta = default;
+        //        l.weights_delta = default;
+        //    }
+        //    return dep;
+        //}
+    }
+
+
+
 }
