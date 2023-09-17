@@ -72,86 +72,102 @@ namespace nn
 
     public struct xfloat4 : Nn<xfloat4, float4>.ICalculatable
     {
-        public float4 value { get; set; }
-
         public int UnitLength => 4;
 
 
-        // forward
-        public void SumActivation(float4 a, NnWeights<float4> cxp_weithgs, int ic, int ip)
+        public struct ForwardActivation : Nn<xfloat4, float4>.ICalculatable.IForwardPropergationActivation
         {
-            var ip_ = ip * this.UnitLength;
-            var ic_ = ic;
+            public float4 value { get; set; }
 
-            this.value +=
-                a.xxxx * cxp_weithgs[ic_, ip_ + 0] +
-                a.yyyy * cxp_weithgs[ic_, ip_ + 1] +
-                a.zzzz * cxp_weithgs[ic_, ip_ + 2] +
-                a.wwww * cxp_weithgs[ic_, ip_ + 3];
+            public void SumActivation(float4 a, NnWeights<float4> cxp_weithgs, int ic, int ip)
+            {
+                var ip_ = ip * this.UnitLength;
+                var ic_ = ic;
+
+                this.value +=
+                    a.xxxx * cxp_weithgs[ic_, ip_ + 0] +
+                    a.yyyy * cxp_weithgs[ic_, ip_ + 1] +
+                    a.zzzz * cxp_weithgs[ic_, ip_ + 2] +
+                    a.wwww * cxp_weithgs[ic_, ip_ + 3];
+            }
+
+            public void SumBias(
+                float4 a, NnWeights<float4> cxp_weithgs, int ic, int ip)
+            {
+                var ip_ = ip * this.UnitLength;
+
+                this.value += cxp_weithgs[ic, ip_];
+            }
         }
-        public void SumBias(
-            float4 a, NnWeights<float4> cxp_weithgs, int ic, int ip)
+
+
+        public struct BackErorr : Nn<xfloat4, float4>.ICalculatable.IBackPropergationError
         {
-            var ip_ = ip * this.UnitLength;
+            public float4 value { get; set; }
 
-            this.value += cxp_weithgs[ic, ip_];
+            // back last
+            public float4 CalculateError(float4 teach, float4 output) =>
+                -2.0f * (teach - output);
+
+
+            // back other
+            public void SumActivationError(
+                float4 nextActivationDelta, NnWeights<float4> nxc_weithgs, int inext, int icurr)
+            {
+                var ic_ = icurr * this.UnitLength;
+
+                var nd = nextActivationDelta;
+                var dx = nd * nxc_weithgs[inext, ic_ + 0];
+                var dy = nd * nxc_weithgs[inext, ic_ + 1];
+                var dz = nd * nxc_weithgs[inext, ic_ + 2];
+                var dw = nd * nxc_weithgs[inext, ic_ + 3];
+
+                var md = new Matrix4x4(dx, dy, dz, dw);
+                var tmd = math.transpose(md);
+
+                this.value += tmd.c0 + tmd.c1 + tmd.c2 + tmd.c3;
+            }
         }
 
 
-        // back common
-        public (float4 raw, xfloat4 rated) CalculateActivationDelta(
+        public struct BackDelta : Nn<xfloat4, float4>.ICalculatable.IBackPropergationDelta
+        {
+            public float4 value { get; set; }
+
+
+            public (float4 raw, xfloat4 rated) CalculateActivationDelta(
             float4 err, float4 o_prime, float learningRate)
-        {
-            var d = err * o_prime;
+            {
+                var d = err * o_prime;
 
-            this.value = d * learningRate;
+                this.value = d * learningRate;
 
-            return (d, this);
+                return (d, this);
+            }
+
+            public void SetWeightActivationDelta(
+                NnWeights<float4> dst_cxp_weithgs_delta, float4 a, int icurr, int iprev)
+            {
+                var ip_ = iprev * new Nn<xfloat4, float4>.ICalculatable().UnitLength;
+                var ic = icurr;
+
+                var delta_rated = this.value;
+                dst_cxp_weithgs_delta[ic, ip_ + 0] = delta_rated * a.xxxx;
+                dst_cxp_weithgs_delta[ic, ip_ + 1] = delta_rated * a.yyyy;
+                dst_cxp_weithgs_delta[ic, ip_ + 2] = delta_rated * a.zzzz;
+                dst_cxp_weithgs_delta[ic, ip_ + 3] = delta_rated * a.wwww;
+            }
+            public void SetWeightBiasDelta(
+                NnWeights<float4> dst_cxp_weithgs_delta, int icurr, int iprev)
+            {
+                var ip_ = iprev * this.UnitLength;
+                var ic = icurr;
+
+                var delta_rated = this.value;
+                dst_cxp_weithgs_delta[ic, ip_] = delta_rated;
+            }
         }
-        public void SetWeightActivationDelta(
-            NnWeights<float4> dst_cxp_weithgs_delta, float4 a, int icurr, int iprev)
-        {
-            var ip_ = iprev * this.UnitLength;
-            var ic = icurr;
 
-            var delta_rated = this.value;
-            dst_cxp_weithgs_delta[ic, ip_ + 0] = delta_rated * a.xxxx;
-            dst_cxp_weithgs_delta[ic, ip_ + 1] = delta_rated * a.yyyy;
-            dst_cxp_weithgs_delta[ic, ip_ + 2] = delta_rated * a.zzzz;
-            dst_cxp_weithgs_delta[ic, ip_ + 3] = delta_rated * a.wwww;
-        }
-        public void SetWeightBiasDelta(
-            NnWeights<float4> dst_cxp_weithgs_delta, int icurr, int iprev)
-        {
-            var ip_ = iprev * this.UnitLength;
-            var ic = icurr;
-
-            var delta_rated = this.value;
-            dst_cxp_weithgs_delta[ic, ip_] = delta_rated;
-        }
-
-        // back last
-        public float4 CalculateError(float4 teach, float4 output) =>
-            -2.0f * (teach - output);
-
-
-        // back other
-        public void SumActivationDelta(
-            float4 nextActivationDelta, NnWeights<float4> nxc_weithgs, int inext, int icurr)
-        {
-            var ic_ = icurr * this.UnitLength;
-
-            var nd = nextActivationDelta;
-            var dx = nd * nxc_weithgs[inext, ic_ + 0];
-            var dy = nd * nxc_weithgs[inext, ic_ + 1];
-            var dz = nd * nxc_weithgs[inext, ic_ + 2];
-            var dw = nd * nxc_weithgs[inext, ic_ + 3];
-
-            var md = new Matrix4x4(dx, dy, dz, dw);
-            var tmd = math.transpose(md);
-
-            this.value += tmd.c0 + tmd.c1 + tmd.c2 + tmd.c3;
-        }
 
         // 
         public void ApplyDeltaToWeight(NnWeights<T> cxp_weithgs, NnWeights<T> cxp_weithgs_delta, int i) =>
@@ -165,23 +181,37 @@ namespace nn
         where U:Nn<U,T>.ICalculatable, new()
         where T:unmanaged
     {
-        static public U CreateDelta(T value) => new U() { value = value };
-        static public U CreateSumValue(T value) => new U() { value = value };
+        //static public U CreateDelta(T value) => new U() { value = value };
+        //static public U CreateSumValue(T value) => new U() { value = value };
 
         public interface ICalculatable
         {
-            T value { get; set; }
-
             int UnitLength { get; }
 
-            void SumActivation(T sum, T a, NnWeights<T> cxp_weithgs, int ic, int ip);
-            void SumBias(T sum, NnWeights<T> cxp_weithgs, int ic, int ip);
+            public interface IForwardPropergationActivation
+            {
+                T value { get; set; }
 
-            T CalculateError(T teach, T output);
-            void SumActivationDelta(T nextActivationDelta, NnWeights<T> nxc_weithgs, int inext, int icurr);
-            (T raw, U rated) CalculateActivationDelta(T err, T o_prime, float learningRate);
-            void SetWeightActivationDelta(NnWeights<T> dst_cxp_weithgs_delta, T a, int ic, int ip);
-            void SetWeightBiasDelta(NnWeights<T> dst_cxp_weithgs_delta, int ic, int ip);
+                void SumActivation(T a, NnWeights<T> cxp_weithgs, int ic, int ip);
+                void SumBias(NnWeights<T> cxp_weithgs, int ic, int ip);
+            }
+            public interface IBackPropergationError
+            {
+                T value { get; set; }
+
+                T CalculateError(T teach, T output);
+                void SumActivationError(T nextActivationDelta, NnWeights<T> nxc_weithgs, int inext, int icurr);
+            }
+            public interface IBackPropergationDelta
+            {
+                T value { get; set; }
+
+                (T raw, U rated) CalculateActivationDelta(T err, T o_prime, float learningRate);
+
+                void SetWeightActivationDelta(NnWeights<T> dst_cxp_weithgs_delta, T a, int ic, int ip);
+                void SetWeightBiasDelta(NnWeights<T> dst_cxp_weithgs_delta, int ic, int ip);
+            }
+
 
             void ApplyDeltaToWeight(NnWeights<T> cxp_weithgs, NnWeights<T> cxp_weithgs_delta, int i);
         }

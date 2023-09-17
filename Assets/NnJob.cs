@@ -158,7 +158,7 @@ namespace nn
                 for (var inext = 0; inext < this.next_ds.lengthOfUnits; inext++)
                 {
                     var nextActivationDelta = this.next_ds[inext];
-                    err.SumActivationDelta(nextActivationDelta, this.nxc_weithgs, inext, ic);
+                    err.SumActivationError(nextActivationDelta, this.nxc_weithgs, inext, ic);
                 }
                 var a = this.curr_activations[ic];
                 var prime = new TAct().Prime(a);
