@@ -36,7 +36,7 @@ namespace nn
 
 
     public static partial class Nn_<U, T>
-        where U : Nn<U, T>.ICalculatable, new()
+        where U : ICalculation<T>
         where T : unmanaged
     {
 
@@ -56,14 +56,14 @@ namespace nn
 
             public unsafe void Execute(int ic)
             {
-                var sum = default(T);
+                var sum = U.CreateActivation();//new U.IForwardPropergationActivation();
 
                 var ip = 0;
                 for (; ip < this.prev_activations.lengthOfUnits; ip++)
                 {
                     var a = this.prev_activations[ip];
 
-                    new U().SumActivation(sum, a, this.cxp_weithgs, ic, ip);
+                    sum.SumActivation(a, this.cxp_weithgs, ic, ip);
                 }
                 new U().SumBias(sum, this.cxp_weithgs, ic, ip);
 
