@@ -11,23 +11,24 @@ using Unity.Mathematics;
 using static Unity.Mathematics.math;
 using System.Runtime.ConstrainedExecution;
 using Unity.VisualScripting;
+using System.Diagnostics;
 
 namespace nn
 {
-    public struct NnFloat4 : ICalculation<float4, NnFloat4.ForwardActivation, NnFloat4.BackError, NnFloat4.BackDelta>
+    using CalclationFloat = Calculation<float4, NnFloat4.ForwardActivation, NnFloat4.BackError, NnFloat4.BackDelta>;
+
+    public class NnFloat4 : CalclationFloat
     {
 
         const int unitLength = 4;
 
-        //public V CreatActivation<V>() where V : IForwardPropergationActivation, new() => new V();
-        //public V CreatError<V>() where V : IBackPropergationError<V>, new() => new V();
-        //public V CreatDelta<V>() where V : IBackPropergationDelta<V>, new() => new V();
 
-
-        public struct ForwardActivation : ICalculation<>.IForwardPropergationActivation
+        public struct ForwardActivation : CalclationFloat.IForwardPropergationActivation
         {
 
             public float4 value { get; set; }
+
+            public int UnitLength => UnitLength;
 
 
             public void SumActivation(float4 a, NnWeights<float4> cxp_weithgs, int ic, int ip)
@@ -52,7 +53,7 @@ namespace nn
         }
 
 
-        public struct BackError : IBackPropergationError<BackError>
+        public struct BackError : CalclationFloat.IBackPropergationError<BackError>
         {
 
             public float4 value { get; set; }
@@ -83,7 +84,7 @@ namespace nn
         }
 
 
-        public struct BackDelta : ICalculation<float4>.IBackPropergationDelta<BackDelta>
+        public struct BackDelta : CalclationFloat.IBackPropergationDelta<BackDelta>
         {
 
             public float4 rated { get; set; }
@@ -126,6 +127,33 @@ namespace nn
                     cxp_weithgs[i] -= cxp_weithgs_delta[i];
         }
 
+
+
+
+        public struct ReLU : CalclationFloat.IActivationFunction
+        {
+            public float4 Activate(float4 u) => max(u, 0);
+            public float4 Prime(float4 a) => sign(a);
+
+            public float4 CalculateError(float4 t, float4 o) => -2.0f * (t - o);
+            public void InitWeights(NnWeights<float4> weights) => weights.InitHe();
+        }
+        public struct Sigmoid : CalclationFloat.IActivationFunction
+        {
+            public float4 Activate(float4 u) => 1 / (1 + exp(-u));
+            public float4 Prime(float4 a) => a * (1 - a);
+
+            public float4 CalculateError(float4 t, float4 o) => -2.0f * (t - o);
+            public void InitWeights(NnWeights<float4> weights) => weights.InitXivier();
+        }
+        public struct Affine : CalclationFloat.IActivationFunction
+        {
+            public float4 Activate(float4 u) => u;
+            public float4 Prime(float4 a) => 1;
+
+            public float4 CalculateError(float4 t, float4 o) => -2.0f * (t - o);
+            public void InitWeights(NnWeights<float4> weights) => weights.InitRandom();
+        }
 
     }
 }
