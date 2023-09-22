@@ -24,10 +24,10 @@ namespace nn
         public NativeArray<T> currents;
 
 
-        public int lengthOfNodes { get; private set; }
-        public int lengthOfUnits => this.currents.Length;
+        public int lengthOfNodes { get; private set; }  // T ŠÖŒW‚È‚µ‚ÌŒÂ”
+        public int lengthOfUnits { get; private set; }  // T ‚ÌŒÂ”@’[”‚ğœ‚­
 
-        public int lengthOfFraction { get; private set; }
+        public int lengthOfFraction { get; private set; }   // ’[”
 
 
         public T this[int i]
@@ -40,15 +40,16 @@ namespace nn
         unsafe NnActivations<T> alloc<TUnit>(int nodeLength, Allocator allocator = Allocator.TempJob)
             where TUnit : unmanaged
         {
-            var unitLength = sizeof(T) / sizeof(TUnit);
-            var lengthOfUnits = nodeLength / unitLength;
+            var nodesInUnit = sizeof(T) / sizeof(TUnit);
 
             this.lengthOfNodes = nodeLength;
-            this.lengthOfFraction = nodeLength - lengthOfUnits * unitLength;
+            this.lengthOfUnits = nodeLength / nodesInUnit;
+            this.lengthOfFraction = nodeLength - this.lengthOfUnits * nodesInUnit;
 
             var length = this.lengthOfNodes + (this.lengthOfFraction > 0 ? 1 : 0);
 
-            this.currents = new NativeArray<T>(length, allocator, NativeArrayOptions.UninitializedMemory);
+            var option = NativeArrayOptions.UninitializedMemory;
+            this.currents = new NativeArray<T>(length, allocator, option);
 
             return this;
         }
@@ -64,7 +65,9 @@ namespace nn
         {
             var clone = this;
 
-            clone.currents = new NativeArray<T>(this.currents.Length, Allocator.TempJob, NativeArrayOptions.UninitializedMemory);
+            var allocator = Allocator.TempJob;
+            var option = NativeArrayOptions.UninitializedMemory;
+            clone.currents = new NativeArray<T>(this.currents.Length, allocator, option);
 
             return clone;
         }
