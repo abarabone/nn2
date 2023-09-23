@@ -37,10 +37,10 @@ namespace nn
         }
 
 
-        unsafe NnActivations<T> alloc<TUnit>(int nodeLength, Allocator allocator = Allocator.TempJob)
-            where TUnit : unmanaged
+        unsafe NnActivations<T> alloc<T1>(int nodeLength, Allocator allocator = Allocator.TempJob)
+            where T1 : unmanaged
         {
-            var nodesInUnit = sizeof(T) / sizeof(TUnit);
+            var nodesInUnit = sizeof(T) / sizeof(T1);
 
             this.lengthOfNodes = nodeLength;
             this.lengthOfUnits = nodeLength / nodesInUnit;
@@ -54,10 +54,10 @@ namespace nn
             return this;
         }
 
-        static public NnActivations<T> Create<TUnit>(int nodeLength, Allocator allocator = Allocator.TempJob)
-            where TUnit : unmanaged
+        static public NnActivations<T> Create<T1>(int nodeLength, Allocator allocator = Allocator.TempJob)
+            where T1 : unmanaged
         {
-            return new NnActivations<T>().alloc<TUnit>(nodeLength, allocator);
+            return new NnActivations<T>().alloc<T1>(nodeLength, allocator);
         }
 
 
