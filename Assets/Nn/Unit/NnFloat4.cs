@@ -15,15 +15,15 @@ using System.Diagnostics;
 
 namespace nn
 {
-    using CalclationFloat = Calculation<float4, NnFloat4.ForwardActivation, NnFloat4.BackError, NnFloat4.BackDelta>;
+    using CalclationFloat4 = Calculation<float4, NnFloat4.ForwardActivation, NnFloat4.BackError, NnFloat4.BackDelta>;
 
-    public class NnFloat4 : CalclationFloat
+    public class NnFloat4 : CalclationFloat4
     {
 
         const int unitLength = 4;
 
 
-        public struct ForwardActivation : CalclationFloat.IForwardPropergationActivation
+        public struct ForwardActivation : CalclationFloat4.IForwardPropergationActivation
         {
 
             public float4 value { get; set; }
@@ -53,7 +53,7 @@ namespace nn
         }
 
 
-        public struct BackError : CalclationFloat.IBackPropergationError<BackError>
+        public struct BackError : CalclationFloat4.IBackPropergationError<BackError>
         {
 
             public float4 value { get; set; }
@@ -84,7 +84,7 @@ namespace nn
         }
 
 
-        public struct BackDelta : CalclationFloat.IBackPropergationDelta<BackDelta>
+        public struct BackDelta : CalclationFloat4.IBackPropergationDelta<BackDelta>
         {
 
             public float4 rated { get; set; }
@@ -130,7 +130,7 @@ namespace nn
 
 
 
-        public struct ReLU : CalclationFloat.IActivationFunction
+        public struct ReLU : CalclationFloat4.IActivationFunction
         {
             public float4 Activate(float4 u) => max(u, 0);
             public float4 Prime(float4 a) => sign(a);
@@ -138,7 +138,7 @@ namespace nn
             public float4 CalculateError(float4 t, float4 o) => -2.0f * (t - o);
             public void InitWeights(NnWeights<float4> weights) => weights.InitHe();
         }
-        public struct Sigmoid : CalclationFloat.IActivationFunction
+        public struct Sigmoid : CalclationFloat4.IActivationFunction
         {
             public float4 Activate(float4 u) => 1 / (1 + exp(-u));
             public float4 Prime(float4 a) => a * (1 - a);
@@ -146,7 +146,7 @@ namespace nn
             public float4 CalculateError(float4 t, float4 o) => -2.0f * (t - o);
             public void InitWeights(NnWeights<float4> weights) => weights.InitXivier();
         }
-        public struct Affine : CalclationFloat.IActivationFunction
+        public struct Affine : CalclationFloat4.IActivationFunction
         {
             public float4 Activate(float4 u) => u;
             public float4 Prime(float4 a) => 1;

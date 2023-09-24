@@ -13,18 +13,14 @@ using System.Runtime.ConstrainedExecution;
 using Unity.VisualScripting;
 
 using nn;
-using nn.simd;
 //using numunit = System.Single;
 //using number = System.Single;
-//using numunit = System.Double;
-//using number = System.Double;
-using numunit = System.Single;
-using number = Unity.Mathematics.float4;
+using Nnx = nn.Nn<float, float, nn.NnFloat.ForwardActivation, nn.NnFloat.BackError, nn.NnFloat.BackDelta>;
 
-public class Nn : MonoBehaviour
+public class NnComponent : MonoBehaviour
 {
 
-    public NnLayers<number> nn;
+    public Nnx.NnLayers nn;
     public int epoc;
 
     public int[] nodeList;
@@ -33,13 +29,13 @@ public class Nn : MonoBehaviour
     public ShowLayer[] show_layers;
 
 
-    NnOtherAndLast<ReLU, Sigmoid> exe = new();
+    NnOtherAndLast<NnFloat.ReLU, NnFloat.Sigmoid> exe = new();
     //NnUinform<Sigmoid> exe = new();
 
     // Start is called before the first frame update
     void Start()
     {
-        this.nn = new NnLayers<number>(this.nodeList);
+        this.nn = new Nnx.NnLayers(this.nodeList);
 
         this.exe.InitWeights(this.nn.layers);
     }

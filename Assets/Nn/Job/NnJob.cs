@@ -14,8 +14,9 @@ using System.Numerics;
 
 namespace nn
 {
-    public static partial class Nn<T, Ta, Te, Td>
+    public static partial class Nn<T, T1, Ta, Te, Td>
         where T : unmanaged
+        where T1 : unmanaged
         where Ta : Calculation<T, Ta, Te, Td>.IForwardPropergationActivation, new()
         where Te : Calculation<T, Ta, Te, Td>.IBackPropergationError<Te>, new()
         where Td : Calculation<T, Ta, Te, Td>.IBackPropergationDelta<Td>, new()
@@ -86,11 +87,12 @@ namespace nn
             {
                 var t = this.curr_trains[ic];
                 var o = this.curr_activations[ic];
+
                 //var err = Calc.CreatError().CalculateError(t, o);
                 var err = new TAct().CalculateError(t, o);
                 var prime = new TAct().Prime(o);
-                var d = Calc.CreatDelta().CalculateActivationDelta(err, prime, this.leaning_rate);
 
+                var d = Calc.CreatDelta().CalculateActivationDelta(err, prime, this.leaning_rate);
                 this.curr_ds[ic] = d.raw;
 
                 var ip = 0;
@@ -145,8 +147,8 @@ namespace nn
                 }
                 var a = this.curr_activations[ic];
                 var prime = new TAct().Prime(a);
-                var d = Calc.CreatDelta().CalculateActivationDelta(err.value, prime, this.leaning_rate);
 
+                var d = Calc.CreatDelta().CalculateActivationDelta(err.value, prime, this.leaning_rate);
                 this.curr_ds[ic] = d.raw;
 
                 var ip = 0;

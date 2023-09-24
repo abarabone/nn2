@@ -16,8 +16,9 @@ namespace nn
 {
 
 
-    public static partial class Nn<T, Ta, Te, Td>
+    public static partial class Nn<T, T1, Ta, Te, Td>
         where T : unmanaged
+        where T1 : unmanaged
         where Ta : Calculation<T, Ta, Te, Td>.IForwardPropergationActivation, new()
         where Te : Calculation<T, Ta, Te, Td>.IBackPropergationError<Te>, new()
         where Td : Calculation<T, Ta, Te, Td>.IBackPropergationDelta<Td>, new()
@@ -43,7 +44,7 @@ namespace nn
         public Te CreatError() => new Te();
         public Td CreatDelta() => new Td();
 
-        public int UnitLength => new Ta().UnitLength;
+        public int nodesInUnit => new Ta().UnitLength;
 
 
         public interface IForwardPropergationActivation
@@ -84,6 +85,15 @@ namespace nn
 
             T CalculateError(T t, T o);
         }
+
+        //public interface IWeightInitialize
+        //{
+        //    void InitRandom(NnWeights<T> ws);
+
+        //    void InitXivier(NnWeights<T> ws);
+
+        //    void InitHe(NnWeights<T> ws);
+        //}
     }
 
 
