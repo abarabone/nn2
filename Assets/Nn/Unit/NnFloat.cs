@@ -19,8 +19,14 @@ namespace nn
 {
     using CalclationFloat = Calculation<float, NnFloat.ForwardActivation, NnFloat.BackError, NnFloat.BackDelta>;
 
-    public class NnFloat : CalclationFloat
+    public struct NnFloat : CalclationFloat
     {
+
+        public ForwardActivation CreatActivation() => new ForwardActivation();
+        public BackError CreatError() => new BackError();
+        public BackDelta CreatDelta() => new BackDelta();
+
+        public int NodesInUnit => unitLength;
 
         const int unitLength = 1;
 
@@ -29,8 +35,6 @@ namespace nn
         {
 
             public float value { get; set; }
-
-            public int UnitLength => UnitLength;
 
 
             public void SumActivation(float a, NnWeights<float> cxp_weights, int ic, int ip)

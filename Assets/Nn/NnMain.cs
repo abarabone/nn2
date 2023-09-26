@@ -16,16 +16,16 @@ namespace nn
 {
 
 
-    public static partial class Nn<T, T1, Ta, Te, Td>
+    public static partial class Nn<T, T1, Tc, Ta, Te, Td>
         where T : unmanaged
         where T1 : unmanaged
+        where Tc : Calculation<T, Ta, Te, Td>
         where Ta : Calculation<T, Ta, Te, Td>.IForwardPropergationActivation, new()
         where Te : Calculation<T, Ta, Te, Td>.IBackPropergationError<Te>, new()
         where Td : Calculation<T, Ta, Te, Td>.IBackPropergationDelta<Td>, new()
     {
 
-        public static Calculation<T, Ta, Te, Td> Calc;
-
+        public static Tc Calc;
 
 
     }
@@ -33,24 +33,27 @@ namespace nn
 
 
     // Ç≈Ç´ÇÈÇæÇØé¿ëÃâªÇµÇΩÇ≠Ç»Ç¢ÇÃÇ≈ÅAåvéZïîï™ÇæÇØ Nn Ç©ÇÁï™ó£
-    public class Calculation<T, Ta, Te, Td>
+    public interface Calculation<T, Ta, Te, Td>
         where T : unmanaged
         where Ta : Calculation<T, Ta, Te, Td>.IForwardPropergationActivation, new()
         where Te : Calculation<T, Ta, Te, Td>.IBackPropergationError<Te>, new()
         where Td : Calculation<T, Ta, Te, Td>.IBackPropergationDelta<Td>, new()
     {
 
-        public Ta CreatActivation() => new Ta();
-        public Te CreatError() => new Te();
-        public Td CreatDelta() => new Td();
+        //public Ta CreatActivation() => new Ta();
+        //public Te CreatError() => new Te();
+        //public Td CreatDelta() => new Td();
 
-        public int nodesInUnit => new Ta().UnitLength;
+        Ta CreatActivation();
+        Te CreatError();
+        Td CreatDelta();
+
+        int NodesInUnit { get; }
 
 
         public interface IForwardPropergationActivation
         {
             T value { get; set; }
-            int UnitLength { get; }
 
             void SumActivation(T a, NnWeights<T> cxp_weithgs, int ic, int ip);
             void SumBias(NnWeights<T> cxp_weithgs, int ic, int ip);

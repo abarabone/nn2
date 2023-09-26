@@ -17,8 +17,14 @@ namespace nn
 {
     using CalclationFloat4 = Calculation<float4, NnFloat4.ForwardActivation, NnFloat4.BackError, NnFloat4.BackDelta>;
 
-    public class NnFloat4 : CalclationFloat4
+    public struct NnFloat4 : CalclationFloat4
     {
+
+        public ForwardActivation CreatActivation() => new ForwardActivation();
+        public BackError CreatError() => new BackError();
+        public BackDelta CreatDelta() => new BackDelta();
+
+        public int NodesInUnit => unitLength;
 
         const int unitLength = 4;
 
@@ -27,8 +33,6 @@ namespace nn
         {
 
             public float4 value { get; set; }
-
-            public int UnitLength => UnitLength;
 
 
             public void SumActivation(float4 a, NnWeights<float4> cxp_weithgs, int ic, int ip)
@@ -130,13 +134,39 @@ namespace nn
 
 
 
+        //public struct ReLU : CalclationFloat4.IActivationFunction
+        //{
+        //    public float4 Activate(float4 u) => max(u, 0);
+        //    public float4 Prime(float4 a) => sign(a);
+
+        //    public float4 CalculateError(float4 t, float4 o) => -2.0f * (t - o);
+        //    public void InitWeights(NnWeights<float4> weights) => weights.InitHe();
+        //}
+        //public struct Sigmoid : CalclationFloat4.IActivationFunction
+        //{
+        //    public float4 Activate(float4 u) => 1 / (1 + exp(-u));
+        //    public float4 Prime(float4 a) => a * (1 - a);
+
+        //    public float4 CalculateError(float4 t, float4 o) => -2.0f * (t - o);
+        //    public void InitWeights(NnWeights<float4> weights) => weights.InitXivier();
+        //}
+        //public struct Affine : CalclationFloat4.IActivationFunction
+        //{
+        //    public float4 Activate(float4 u) => u;
+        //    public float4 Prime(float4 a) => 1;
+
+        //    public float4 CalculateError(float4 t, float4 o) => -2.0f * (t - o);
+        //    public void InitWeights(NnWeights<float4> weights) => weights.InitRandom();
+        //}
+
+
         public struct ReLU : CalclationFloat4.IActivationFunction
         {
             public float4 Activate(float4 u) => max(u, 0);
             public float4 Prime(float4 a) => sign(a);
 
             public float4 CalculateError(float4 t, float4 o) => -2.0f * (t - o);
-            public void InitWeights(NnWeights<float4> weights) => weights.InitHe();
+            public void InitWeights(NnWeights<float4> weights) => new WeightInitializer().InitHe(weights);
         }
         public struct Sigmoid : CalclationFloat4.IActivationFunction
         {
@@ -144,7 +174,7 @@ namespace nn
             public float4 Prime(float4 a) => a * (1 - a);
 
             public float4 CalculateError(float4 t, float4 o) => -2.0f * (t - o);
-            public void InitWeights(NnWeights<float4> weights) => weights.InitXivier();
+            public void InitWeights(NnWeights<float4> weights) => new WeightInitializer().InitXivier(weights);
         }
         public struct Affine : CalclationFloat4.IActivationFunction
         {
@@ -152,8 +182,72 @@ namespace nn
             public float4 Prime(float4 a) => 1;
 
             public float4 CalculateError(float4 t, float4 o) => -2.0f * (t - o);
-            public void InitWeights(NnWeights<float4> weights) => weights.InitRandom();
+            public void InitWeights(NnWeights<float4> weights) => new WeightInitializer().InitRandom(weights);
         }
 
+
+
+        public struct WeightInitializer// : IWeightInitialize
+        {
+
+            public unsafe void InitRandom(NnWeights<float4> ws)
+            {
+                var rnd = new Unity.Mathematics.Random((uint)ws.values.GetUnsafePtr());
+
+                for (var i = 0; i < ws.lengthOfUnits; i++)
+                {
+                    ws[i] = rnd.NextFloat4();
+                }
+            }
+
+            public unsafe void InitXivier(NnWeights<float4> ws)
+            {
+                initX1X2(ws, 1.0f / sqrt((float4)ws.widthOfUnits));
+            }
+
+            public unsafe void InitHe(NnWeights<float4> ws)
+            {
+                initX1X2(ws, sqrt(2.0f / (float4)ws.widthOfUnits));
+            }
+
+
+            static unsafe void initX1X2(NnWeights<float4> ws, float4 std_deviation)
+            {
+                if (!ws.values.IsCreated) return;
+
+                var rnd = new Unity.Mathematics.Random((uint)ws.values.GetUnsafePtr());
+                var pi2 = 2.0f * math.PI;
+
+                (float4 x1, float4 x2) calc_x1x2() => (
+                    x1: sqrt(-2.0f * log(rnd.NextFloat4())) * std_deviation,
+                    x2: pi2 * rnd.NextFloat());
+
+
+                for (var io = 0; io < ws.lengthOfUnits >> 1; io++)
+                {
+                    var (x1, x2) = calc_x1x2();
+
+                    var v0 =
+                    ws[io * 2 + 0] = x1 * cos(x2);
+                    //if (isnan(v0)) Debug.Log($"{io * 2 + 0} {v0}");
+                    //if (v0 == 0) Debug.Log($"{io * 2 + 0} {v0}");
+
+                    var v1 =
+                    ws[io * 2 + 1] = x1 * sin(x2);
+                    //if (isnan(v1)) Debug.Log($"{io * 2 + 1} {v1}");
+                    //if (v1 == 0) Debug.Log($"{io * 2 + 1} {v1}");
+                }
+
+                if ((ws.lengthOfUnits & 1) > 0)
+                {
+                    var (x1, x2) = calc_x1x2();
+
+                    var v0 =
+                    ws[ws.lengthOfUnits - 1] = x1 * sin(x2);
+                    //if (isnan(v0)) Debug.Log($"{ws.length - 1} {v0}");
+                    //if (v0 == 0) Debug.Log($"{ws.length - 1} {v0}");
+                }
+            }
+        }
     }
 }

@@ -67,9 +67,6 @@ LightmapSettings:
     m_LightmapParameters: {fileID: 0}
     m_LightmapsBakeMode: 1
     m_TextureCompression: 1
-    m_FinalGather: 0
-    m_FinalGatherFiltering: 1
-    m_FinalGatherRayCount: 256
     m_ReflectionCompression: 2
     m_MixedBakeMode: 2
     m_BakeBackend: 1
@@ -319,6 +316,7 @@ GameObject:
   m_Component:
   - component: {fileID: 983497985}
   - component: {fileID: 983497984}
+  - component: {fileID: 983497986}
   m_Layer: 0
   m_Name: GameObject
   m_TagString: Untagged
@@ -341,9 +339,8 @@ MonoBehaviour:
   nn:
     layers: []
   epoc: 0
-  nodeList: 80000000800000008000000080000000800000008000000080000000
+  nodeList: 0700000006000000
   learingRate: 0.05
-  show_layers: []
 --- !u!4 &983497985
 Transform:
   m_ObjectHideFlags: 0
@@ -359,3 +356,17 @@ Transform:
   m_Father: {fileID: 0}
   m_RootOrder: 2
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
+--- !u!114 &983497986
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 983497983}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 7045b43df58ec894baa515702b93d114, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+  isTextFile: 1
+  nn: {fileID: 983497984}
