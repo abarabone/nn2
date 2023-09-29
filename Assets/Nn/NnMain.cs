@@ -19,10 +19,10 @@ namespace nn
     public static partial class Nn<T, T1, Tc, Ta, Te, Td>
         where T : unmanaged
         where T1 : unmanaged
-        where Tc : Calculation<T, Ta, Te, Td>
-        where Ta : Calculation<T, Ta, Te, Td>.IForwardPropergationActivation, new()
-        where Te : Calculation<T, Ta, Te, Td>.IBackPropergationError<Te>, new()
-        where Td : Calculation<T, Ta, Te, Td>.IBackPropergationDelta<Td>, new()
+        where Tc : ICalculation<T, Ta, Te, Td>, new()
+        where Ta : ICalculation<T, Ta, Te, Td>.IForwardPropergationActivation, new()
+        where Te : ICalculation<T, Ta, Te, Td>.IBackPropergationError<Te>, new()
+        where Td : ICalculation<T, Ta, Te, Td>.IBackPropergationDelta<Td>, new()
     {
 
         public static Tc Calc;
@@ -33,20 +33,12 @@ namespace nn
 
 
     // Ç≈Ç´ÇÈÇæÇØé¿ëÃâªÇµÇΩÇ≠Ç»Ç¢ÇÃÇ≈ÅAåvéZïîï™ÇæÇØ Nn Ç©ÇÁï™ó£
-    public interface Calculation<T, Ta, Te, Td>
+    public interface ICalculation<T, Ta, Te, Td>
         where T : unmanaged
-        where Ta : Calculation<T, Ta, Te, Td>.IForwardPropergationActivation, new()
-        where Te : Calculation<T, Ta, Te, Td>.IBackPropergationError<Te>, new()
-        where Td : Calculation<T, Ta, Te, Td>.IBackPropergationDelta<Td>, new()
+        where Ta : ICalculation<T, Ta, Te, Td>.IForwardPropergationActivation, new()
+        where Te : ICalculation<T, Ta, Te, Td>.IBackPropergationError<Te>, new()
+        where Td : ICalculation<T, Ta, Te, Td>.IBackPropergationDelta<Td>, new()
     {
-
-        //public Ta CreatActivation() => new Ta();
-        //public Te CreatError() => new Te();
-        //public Td CreatDelta() => new Td();
-
-        Ta CreatActivation();
-        Te CreatError();
-        Td CreatDelta();
 
         int NodesInUnit { get; }
 
@@ -63,7 +55,7 @@ namespace nn
         {
             T value { get; set; }
 
-            V CalculateError(T teach, T output);
+            //V CalculateError(T teach, T output);
             void SumActivationError(T nextActivationDelta, NnWeights<T> nxc_weithgs, int inext, int icurr);
         }
         public interface IBackPropergationDelta<V> where V : IBackPropergationDelta<V>

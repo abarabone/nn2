@@ -17,10 +17,10 @@ namespace nn
     public static partial class Nn<T, T1, Tc, Ta, Te, Td>
         where T : unmanaged
         where T1 : unmanaged
-        where Tc : Calculation<T, Ta, Te, Td>
-        where Ta : Calculation<T, Ta, Te, Td>.IForwardPropergationActivation, new()
-        where Te : Calculation<T, Ta, Te, Td>.IBackPropergationError<Te>, new()
-        where Td : Calculation<T, Ta, Te, Td>.IBackPropergationDelta<Td>, new()
+        where Tc : ICalculation<T, Ta, Te, Td>, new()
+        where Ta : ICalculation<T, Ta, Te, Td>.IForwardPropergationActivation, new()
+        where Te : ICalculation<T, Ta, Te, Td>.IBackPropergationError<Te>, new()
+        where Td : ICalculation<T, Ta, Te, Td>.IBackPropergationDelta<Td>, new()
     {
 
 

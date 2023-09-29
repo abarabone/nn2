@@ -11,20 +11,20 @@ using Unity.Mathematics;
 using static Unity.Mathematics.math;
 using System.Runtime.ConstrainedExecution;
 using Unity.VisualScripting;
-using System.Diagnostics;
+//using System.Diagnostics;
 using static nn.NnFloat;
 using static Unity.Mathematics.Random;
 
 namespace nn
 {
-    using CalclationFloat = Calculation<float, NnFloat.ForwardActivation, NnFloat.BackError, NnFloat.BackDelta>;
+    using CalclationFloat = ICalculation<float, NnFloat.ForwardActivation, NnFloat.BackError, NnFloat.BackDelta>;
 
     public struct NnFloat : CalclationFloat
     {
 
-        public ForwardActivation CreatActivation() => new ForwardActivation();
-        public BackError CreatError() => new BackError();
-        public BackDelta CreatDelta() => new BackDelta();
+        //public ForwardActivation CreatActivation() => new ForwardActivation();
+        //public BackError CreatError() => new BackError();
+        //public BackDelta CreatDelta() => new BackDelta();
 
         public int NodesInUnit => unitLength;
 
@@ -42,8 +42,7 @@ namespace nn
                 this.value += a * cxp_weights[ic, ip];
             }
 
-            public void SumBias(
-                NnWeights<float> cxp_weights, int ic, int ip)
+            public void SumBias(NnWeights<float> cxp_weights, int ic, int ip)
             {
                 this.value += cxp_weights[ic, ip];
             }
@@ -56,9 +55,11 @@ namespace nn
             public float value { get; set; }
 
 
-            // last only
-            public BackError CalculateError(float teach, float output) =>
-                this = new BackError { value = -2.0f * (teach - output) };
+            //// last only
+            //public BackError CalculateError(float teach, float output)
+            //{
+            //    return this = new BackError { value = -2.0f * (teach - output) };
+            //}
 
             // not last
             public void SumActivationError(
@@ -102,8 +103,10 @@ namespace nn
             }
 
             public void ApplyDeltaToWeight(
-                NnWeights<float> cxp_weights, NnWeights<float> cxp_weights_delta, int i) =>
-                    cxp_weights[i] -= cxp_weights_delta[i];
+                NnWeights<float> cxp_weights, NnWeights<float> cxp_weights_delta, int i)
+            {
+                cxp_weights[i] -= cxp_weights_delta[i];
+            }
         }
 
 
@@ -143,7 +146,7 @@ namespace nn
             {
                 var rnd = new Unity.Mathematics.Random((uint)ws.values.GetUnsafePtr());
 
-                for (var i = 0; i < ws.lengthOfUnits; i++)
+                for (var i = 0; i < ws.values.Length; i++)
                 {
                     ws[i] = rnd.NextFloat();
                 }
@@ -151,12 +154,12 @@ namespace nn
 
             public unsafe void InitXivier(NnWeights<float> ws)
             {
-                initX1X2(ws, 1.0f / sqrt((float)ws.widthOfUnits));
+                initX1X2(ws, 1.0f / sqrt((float)ws.values.Length));
             }
 
             public unsafe void InitHe(NnWeights<float> ws)
             {
-                initX1X2(ws, sqrt(2.0f / (float)ws.widthOfUnits));
+                initX1X2(ws, sqrt(2.0f / (float)ws.values.Length));
             }
 
 
@@ -172,29 +175,29 @@ namespace nn
                     x2: pi2 * rnd.NextFloat());
 
 
-                for (var io = 0; io < ws.lengthOfUnits >> 1; io++)
+                for (var io = 0; io < ws.lengthOfUnit >> 1; io++)
                 {
                     var (x1, x2) = calc_x1x2();
 
                     var v0 =
                     ws[io * 2 + 0] = x1 * cos(x2);
-                    //if (isnan(v0)) Debug.Log($"{io * 2 + 0} {v0}");
-                    //if (v0 == 0) Debug.Log($"{io * 2 + 0} {v0}");
+                    if (isnan(v0)) Debug.Log($"{io * 2 + 0} {v0}");
+                    if (v0 == 0) Debug.Log($"{io * 2 + 0} {v0}");
 
                     var v1 =
                     ws[io * 2 + 1] = x1 * sin(x2);
-                    //if (isnan(v1)) Debug.Log($"{io * 2 + 1} {v1}");
-                    //if (v1 == 0) Debug.Log($"{io * 2 + 1} {v1}");
+                    if (isnan(v1)) Debug.Log($"{io * 2 + 1} {v1}");
+                    if (v1 == 0) Debug.Log($"{io * 2 + 1} {v1}");
                 }
 
-                if ((ws.lengthOfUnits & 1) > 0)
+                if ((ws.lengthOfUnit & 1) > 0)
                 {
                     var (x1, x2) = calc_x1x2();
 
                     var v0 =
-                    ws[ws.lengthOfUnits - 1] = x1 * sin(x2);
-                    //if (isnan(v0)) Debug.Log($"{ws.length - 1} {v0}");
-                    //if (v0 == 0) Debug.Log($"{ws.length - 1} {v0}");
+                    ws[ws.lengthOfUnit - 1] = x1 * sin(x2);
+                    if (isnan(v0)) Debug.Log($"{ws.lengthOfUnit - 1} {v0}");
+                    if (v0 == 0) Debug.Log($"{ws.lengthOfUnit - 1} {v0}");
                 }
             }
         }

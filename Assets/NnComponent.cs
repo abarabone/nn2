@@ -14,8 +14,9 @@ using Unity.VisualScripting;
 
 namespace nn.user
 {
-    using Nnx = Nn<float, float, NnFloat, NnFloat.ForwardActivation, NnFloat.BackError, NnFloat.BackDelta>;
-    //using Nnx = Nn<float4, float, NnFloat4.ForwardActivation, NnFloat4.BackError, NnFloat4.BackDelta>;
+    using nnfloat = NnFloat4;
+    //using Nnx = Nn<float, float, NnFloat, NnFloat.ForwardActivation, NnFloat.BackError, NnFloat.BackDelta>;
+    using Nnx = Nn<float4, float, NnFloat4, NnFloat4.ForwardActivation, NnFloat4.BackError, NnFloat4.BackDelta>;
 
 
     public class NnComponent : MonoBehaviour
@@ -30,11 +31,11 @@ namespace nn.user
         //public ShowLayer[] show_layers;
 
 
-        Nnx.NnOtherAndLast<NnFloat.ReLU, NnFloat.Sigmoid> exe = new();
+        Nnx.NnOtherAndLast<NnFloat4.ReLU, NnFloat4.Sigmoid> exe = new();
         //Nnx.NnUinform<Sigmoid> exe = new();
 
 
-        void Start()
+        void Awake()
         {
             this.nn = new Nnx.NnLayers(this.nodeList);
 
@@ -43,59 +44,62 @@ namespace nn.user
 
 
 
-        //JobHandle deps = default;
+        JobHandle deps = default;
 
-        //// Update is called once per frame
-        //unsafe void Update()
-        //{
-        //    this.deps.Complete();
-        //    //this.nn.switchWeightBuffers();
-        //    this.deps = default;
+        unsafe void Update()
+        {
+            this.deps.Complete();
+            //this.nn.switchWeightBuffers();
+            this.deps = default;
 
-        //    //this.nn.AllocActivationWorks();
-        //    this.nn.AllocDeltaWorks();
-        //    var ia = this.nn.layers.First().activations;
-        //    var oa = this.nn.layers.Last().activations;
+            //this.nn.AllocActivationWorks();
+            this.nn.AllocDeltaWorks();
+            var ia = this.nn.layers.First().activations;
+            var oa = this.nn.layers.Last().activations;
 
-        //    var p = (numunit*)ia.currents.GetUnsafeReadOnlyPtr();
-        //    UnsafeUtility.MemClear(p, ia.lengthOfNodes * sizeof(numunit));
-        //    var i = Unity.Mathematics.Random.CreateFromIndex((uint)Time.frameCount).NextInt(0, ia.lengthOfNodes);
-        //    p[i] = 1;
+            var p = (float*)ia.currents.GetUnsafeReadOnlyPtr();
+            UnsafeUtility.MemClear(p, ia.currents.Length * sizeof(float));
+            var i = Unity.Mathematics.Random.CreateFromIndex((uint)Time.frameCount).NextInt(0, ia.lengthOfNode);
+            p[i] = 1;
+            //logger($"i: ", ia.currents);
+            //logger($"o: ", oa.currents);
 
-        //    this.deps = this.exe.ExecuteForwardWithJob(this.nn.layers, this.deps);
-        //    this.deps = this.exe.ExecuteBackwordWithJob(this.nn.layers, ia.currents, this.learingRate, this.deps);
-        //    this.deps = this.nn.AddDeltaToWeightsWithDisposeTempJob(this.deps);
-        //    JobHandle.ScheduleBatchedJobs();
-        //    //this.exe.ExecuteForward(this.nn.layers);
-        //    //this.exe.ExecuteBackword(this.nn.layers, ia.activations, this.learingRate);
+            this.deps = this.exe.ExecuteForwardWithJob(this.nn.layers, this.deps);
+            //this.deps.Complete();
+            //logger($"i: ", ia.currents);
+            //logger($"o: ", oa.currents);
+            this.deps = this.exe.ExecuteBackwordWithJob(this.nn.layers, ia.currents, this.learingRate, this.deps);
+            //this.deps.Complete();
+            this.deps = this.nn.AddDeltaToWeightsWithDisposeTempJob(this.deps);
+            JobHandle.ScheduleBatchedJobs();
 
-        //    //this.deps.Complete();
-        //    this.epoc++;
-        //}
+            //this.deps.Complete();
+            this.epoc++;
+        }
 
-        //unsafe void OnDisable()
-        //{
-        //    this.deps.Complete();
+        unsafe void OnDisable()
+        {
+            this.deps.Complete();
 
-        //    var ia = this.nn.layers.First().activations;
-        //    var oa = this.nn.layers.Last().activations;
-        //    logger($"i: ", ia.currents);
-        //    logger($"o: ", oa.currents);
+            var ia = this.nn.layers.First().activations;
+            var oa = this.nn.layers.Last().activations;
+            logger($"i: ", ia.currents);
+            logger($"o: ", oa.currents);
 
-        //    //this.show_layers = this.nn.layers.toShow();
-        //}
-        //private void OnDestroy()
-        //{
-        //    this.deps.Complete();
+            //this.show_layers = this.nn.layers.toShow();
+        }
+        private void OnDestroy()
+        {
+            this.deps.Complete();
 
-        //    this.nn.Dispose();
-        //}
+            this.nn.Dispose();
+        }
 
-        //void logger<T>(string desc, NativeArray<T> arr) where T:struct
-        //{
-        //    var s = string.Join(" ", arr.Select(x => $"{x:f2}").Prepend(desc));
-        //    Debug.Log(s);
-        //}
+        void logger<T>(string desc, NativeArray<T> arr) where T : struct
+        {
+            var s = string.Join(" ", arr.Select(x => $"{x:f2}").Prepend(desc));
+            Debug.Log(s);
+        }
     }
 
 

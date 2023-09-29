@@ -17,16 +17,16 @@ namespace nn
     public static partial class Nn<T, T1, Tc, Ta, Te, Td>
         where T : unmanaged
         where T1 : unmanaged
-        where Tc : Calculation<T, Ta, Te, Td>
-        where Ta : Calculation<T, Ta, Te, Td>.IForwardPropergationActivation, new()
-        where Te : Calculation<T, Ta, Te, Td>.IBackPropergationError<Te>, new()
-        where Td : Calculation<T, Ta, Te, Td>.IBackPropergationDelta<Td>, new()
+        where Tc : ICalculation<T, Ta, Te, Td>, new()
+        where Ta : ICalculation<T, Ta, Te, Td>.IForwardPropergationActivation, new()
+        where Te : ICalculation<T, Ta, Te, Td>.IBackPropergationError<Te>, new()
+        where Td : ICalculation<T, Ta, Te, Td>.IBackPropergationDelta<Td>, new()
     {
 
 
         [BurstCompile]
         public struct NnLayerForwardJob<TAct> : IJobParallelFor
-            where TAct : struct, Calculation<T, Ta, Te, Td>.IActivationFunction
+            where TAct : struct, ICalculation<T, Ta, Te, Td>.IActivationFunction
         {
             [ReadOnly]
             public NnActivations<T> prev_activations;
@@ -38,12 +38,13 @@ namespace nn
             public NnWeights<T> cxp_weithgs;
 
 
+            [BurstCompile]
             public unsafe void Execute(int ic)
             {
-                var sum = Calc.CreatActivation();
+                var sum = new Ta { value = default };
 
                 var ip = 0;
-                for (; ip < this.prev_activations.lengthOfUnits; ip++)
+                for (; ip < this.prev_activations.lengthOfNode; ip++)
                 {
                     var a = this.prev_activations[ip];
 
@@ -52,6 +53,8 @@ namespace nn
                 sum.SumBias(this.cxp_weithgs, ic, ip);
 
                 this.curr_activations[ic] = new TAct().Activate(sum.value);
+
+                //Debug.Log($"{ic} {sum.value} {new TAct().Activate(sum.value)}");
             }
         }
 
@@ -60,7 +63,7 @@ namespace nn
         // w -= d * a-
         [BurstCompile]
         public struct NnLayerBackLastJob<TAct> : IJobParallelFor
-            where TAct : struct, Calculation<T, Ta, Te, Td>.IActivationFunction
+            where TAct : struct, ICalculation<T, Ta, Te, Td>.IActivationFunction
         {
             // outputs
             [WriteOnly]
@@ -84,20 +87,20 @@ namespace nn
             public float leaning_rate;
 
 
+            [BurstCompile]
             public unsafe void Execute(int ic)
             {
                 var t = this.curr_trains[ic];
                 var o = this.curr_activations[ic];
 
-                //var err = Calc.CreatError().CalculateError(t, o);
                 var err = new TAct().CalculateError(t, o);
                 var prime = new TAct().Prime(o);
 
-                var d = Calc.CreatDelta().CalculateActivationDelta(err, prime, this.leaning_rate);
+                var d = new Td().CalculateActivationDelta(err, prime, this.leaning_rate);
                 this.curr_ds[ic] = d.raw;
 
                 var ip = 0;
-                for (; ip < this.prev_activations.lengthOfUnits; ip++)
+                for (; ip < this.prev_activations.lengthOfNode; ip++)
                 {
                     var a_prev = this.prev_activations[ip];
 
@@ -111,7 +114,7 @@ namespace nn
         // w -= d * a-
         [BurstCompile]
         public struct NnLayerBackJob<TAct> : IJobParallelFor
-            where TAct : struct, Calculation<T, Ta, Te, Td>.IActivationFunction
+            where TAct : struct, ICalculation<T, Ta, Te, Td>.IActivationFunction
         {
             // outputs
             [WriteOnly]
@@ -138,22 +141,24 @@ namespace nn
             public float leaning_rate;
 
 
+            [BurstCompile]
             public unsafe void Execute(int ic)
             {
-                var err = Calc.CreatError();
-                for (var inext = 0; inext < this.next_ds.lengthOfUnits; inext++)
+                var err = new Te { value = default };
+                for (var inext = 0; inext < this.next_ds.lengthOfUnit; inext++)
                 {
                     var nextActivationDelta = this.next_ds[inext];
+
                     err.SumActivationError(nextActivationDelta, this.nxc_weithgs, inext, ic);
                 }
                 var a = this.curr_activations[ic];
                 var prime = new TAct().Prime(a);
 
-                var d = Calc.CreatDelta().CalculateActivationDelta(err.value, prime, this.leaning_rate);
+                var d = new Td().CalculateActivationDelta(err.value, prime, this.leaning_rate);
                 this.curr_ds[ic] = d.raw;
 
                 var ip = 0;
-                for (; ip < this.prev_activations.lengthOfUnits; ip++)
+                for (; ip < this.prev_activations.lengthOfNode; ip++)
                 {
                     var a_prev = this.prev_activations[ip];
 
@@ -169,9 +174,6 @@ namespace nn
         public struct NnLayerUpdateWeightsJob : IJobParallelFor
         {
 
-            public Tc calc;
-
-
             //[WriteOnly]
             public NnWeights<T> cxp_weithgs;
 
@@ -179,9 +181,10 @@ namespace nn
             public NnWeights<T> cxp_weithgs_delta;
 
 
+            [BurstCompile]
             public void Execute(int i)
             {
-                this.calc.CreatDelta().ApplyDeltaToWeight(this.cxp_weithgs, this.cxp_weithgs_delta, i);
+                new Td().ApplyDeltaToWeight(this.cxp_weithgs, this.cxp_weithgs_delta, i);
             }
         }
 

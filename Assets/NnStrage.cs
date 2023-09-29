@@ -13,8 +13,8 @@ using Unity.Mathematics;
 
 namespace nn.user
 {
-    using Nnx = Nn<float, float, NnFloat, NnFloat.ForwardActivation, NnFloat.BackError, NnFloat.BackDelta>;
-    //using Nnx = Nn<float4, float, NnFloat4, NnFloat4.ForwardActivation, NnFloat4.BackError, NnFloat4.BackDelta>;
+    //using Nnx = Nn<float, float, NnFloat, NnFloat.ForwardActivation, NnFloat.BackError, NnFloat.BackDelta>;
+    using Nnx = Nn<float4, float, NnFloat4, NnFloat4.ForwardActivation, NnFloat4.BackError, NnFloat4.BackDelta>;
 
     public class NnStrage : MonoBehaviour
     {
@@ -60,7 +60,7 @@ namespace nn.user
             foreach (var l in layers.layers)
             {
                 var length = l.weights.values.Length * Nnx.Calc.NodesInUnit;
-                var w = l.weights.widthOfUnits * Nnx.Calc.NodesInUnit;//Debug.Log($"{w} {l.weights.widthOfUnits} {Nnx.Calc.nodesInUnit}");
+                var w = l.weights.widthOfUnit * Nnx.Calc.NodesInUnit;//Debug.Log($"{w} {l.weights.widthOfUnits} {Nnx.Calc.nodesInUnit}");
                 var h = 0;
                 if (w != 0) h = length / w;
                 f.WriteLine($"{length} : {w} x {h}");

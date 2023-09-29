@@ -15,14 +15,14 @@ using System.Diagnostics;
 
 namespace nn
 {
-    using CalclationFloat4 = Calculation<float4, NnFloat4.ForwardActivation, NnFloat4.BackError, NnFloat4.BackDelta>;
+    using CalclationFloat4 = ICalculation<float4, NnFloat4.ForwardActivation, NnFloat4.BackError, NnFloat4.BackDelta>;
 
     public struct NnFloat4 : CalclationFloat4
     {
 
-        public ForwardActivation CreatActivation() => new ForwardActivation();
-        public BackError CreatError() => new BackError();
-        public BackDelta CreatDelta() => new BackDelta();
+        //public ForwardActivation CreatActivation() => new ForwardActivation();
+        //public BackError CreatError() => new BackError();
+        //public BackDelta CreatDelta() => new BackDelta();
 
         public int NodesInUnit => unitLength;
 
@@ -63,9 +63,11 @@ namespace nn
             public float4 value { get; set; }
 
 
-            // back last
-            public BackError CalculateError(float4 teach, float4 output) =>
-                this = new BackError { value = -2.0f * (teach - output) };
+            //// back last
+            //public BackError CalculateError(float4 teach, float4 output)
+            //{
+            //    this = new BackError { value = -2.0f * (teach - output) };
+            //}
 
 
             // back other
@@ -127,8 +129,10 @@ namespace nn
             }
 
             public void ApplyDeltaToWeight(
-                NnWeights<float4> cxp_weithgs, NnWeights<float4> cxp_weithgs_delta, int i) =>
-                    cxp_weithgs[i] -= cxp_weithgs_delta[i];
+                NnWeights<float4> cxp_weithgs, NnWeights<float4> cxp_weithgs_delta, int i)
+            {
+                cxp_weithgs[i] -= cxp_weithgs_delta[i];
+            }
         }
 
 
@@ -194,20 +198,22 @@ namespace nn
             {
                 var rnd = new Unity.Mathematics.Random((uint)ws.values.GetUnsafePtr());
 
-                for (var i = 0; i < ws.lengthOfUnits; i++)
+                for (var i = 0; i < ws.lengthOfUnit; i++)
                 {
                     ws[i] = rnd.NextFloat4();
                 }
+
+                setZeroAtLastPerWidth(ws);
             }
 
             public unsafe void InitXivier(NnWeights<float4> ws)
             {
-                initX1X2(ws, 1.0f / sqrt((float4)ws.widthOfUnits));
+                initX1X2(ws, 1.0f / sqrt((float4)ws.lengthOfUnit * 4));
             }
 
             public unsafe void InitHe(NnWeights<float4> ws)
             {
-                initX1X2(ws, sqrt(2.0f / (float4)ws.widthOfUnits));
+                initX1X2(ws, sqrt(2.0f / (float4)ws.lengthOfUnit * 4));
             }
 
 
@@ -220,10 +226,10 @@ namespace nn
 
                 (float4 x1, float4 x2) calc_x1x2() => (
                     x1: sqrt(-2.0f * log(rnd.NextFloat4())) * std_deviation,
-                    x2: pi2 * rnd.NextFloat());
+                    x2: pi2 * rnd.NextFloat4());
 
 
-                for (var io = 0; io < ws.lengthOfUnits >> 1; io++)
+                for (var io = 0; io < ws.lengthOfUnit >> 1; io++)
                 {
                     var (x1, x2) = calc_x1x2();
 
@@ -238,14 +244,41 @@ namespace nn
                     //if (v1 == 0) Debug.Log($"{io * 2 + 1} {v1}");
                 }
 
-                if ((ws.lengthOfUnits & 1) > 0)
+                if ((ws.lengthOfUnit & 1) > 0)
                 {
                     var (x1, x2) = calc_x1x2();
 
                     var v0 =
-                    ws[ws.lengthOfUnits - 1] = x1 * sin(x2);
+                    ws[ws.lengthOfUnit - 1] = x1 * sin(x2);
                     //if (isnan(v0)) Debug.Log($"{ws.length - 1} {v0}");
                     //if (v0 == 0) Debug.Log($"{ws.length - 1} {v0}");
+                }
+
+                setZeroAtLastPerWidth(ws);
+            }
+
+            static void setZeroAtLastPerWidth(NnWeights<float4> ws)
+            {
+                if (ws.widthLastRemain == 0) return;
+
+
+                for (var i = 0; i < ws.lengthOfUnit; i += ws.widthOfUnit)
+                {
+                    setZeroLast_(i);
+                }
+
+
+                void setZeroLast_(int offset)
+                {
+                    var v = ws[offset + ws.widthOfUnit - 1];
+
+                    ws[offset + ws.widthOfUnit - 1] = ws.widthLastRemain switch
+                    {
+                        1 => new float4(v.x, v.y, v.z, 0),
+                        2 => new float4(v.x, v.y, 0, 0),
+                        3 => new float4(v.x, 0, 0, 0),
+                        _ => new float4(0, 0, 0, 0),
+                    };
                 }
             }
         }
